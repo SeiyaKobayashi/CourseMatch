@@ -1,0 +1,147 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    <div class="row justify-content-center mt-5">
+        <h1>Edit Profile</h1>
+    </div>
+    <div class="row justify-content-center mt-2">
+        <i>Fields with asterisks(<font color="red">*</font>) are required.</i>
+    </div>
+    <form action="{{url_for('update', userid=session['userid'])}}" method="post">
+        <div class="form-group row justify-content-center pt-4">
+            <label for="inputName" class="col-sm-2 col-form-label">Name <font color="red">*</font></label>
+            <div class="col-sm-6">
+                <input name="name" type="text" placeholder="Name" value="{{user['name']}}" class="form-control" id="inputName" required>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputEmail" class="col-sm-2 col-form-label">Email <font color="red">*</font></label>
+            <div class="col-sm-6">
+                <input name="email" type="email" placeholder="Email" value="{{user['email']}}" class="form-control" id="inputEmail" required>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label class="col-sm-2 col-form-label">Gender</label>
+            <div class="col-sm-6">
+                <div class="form-check">
+                    {% if user['gender'] == 'Male' %}
+                        <input class="form-check-input" type="radio" name="gender" id="genderMale" value="Male" checked>
+                    {% else %}
+                        <input class="form-check-input" type="radio" name="gender" id="genderMale" value="Male">
+                    {% endif %}
+                    <label class="form-check-label" for="genderMale">Male</label>
+                </div>
+                <div class="form-check">
+                    {% if user['gender'] == 'Female' %}
+                        <input class="form-check-input" type="radio" name="gender" id="genderFemale" value="Female" checked>
+                    {% else %}
+                        <input class="form-check-input" type="radio" name="gender" id="genderFemale" value="Female">
+                    {% endif %}
+                    <label class="form-check-label" for="genderFemale">Female</label>
+                </div>
+                <div class="form-check">
+                    {% if user['gender'] == 'PNTA' %}
+                        <input class="form-check-input" type="radio" name="gender" id="genderPNTA" value="PNTA" checked>
+                    {% else %}
+                        <input class="form-check-input" type="radio" name="gender" id="genderPNTA" value="PNTA">
+                    {% endif %}
+                    <label class="form-check-label" for="genderNaN">Prefer Not to Answer</label>
+                </div>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputSchool" class="col-sm-2 col-form-label">School (College/University) <font color="red">*</font></label>
+            <div class="col-sm-6">
+                <input name="school" type="text" placeholder="e.g., Boston University" value="{{user['school']}}" class="form-control" id="inputSchool" required>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label class="col-sm-2 col-form-label">School Year</label>
+            <div class="col-sm-6">
+                <div class="form-check">
+                    {% if user['year'] == 'Freshman' %}
+                        <input class="form-check-input" type="radio" name="year" id="year1" value="Freshman" checked>
+                    {% else %}
+                        <input class="form-check-input" type="radio" name="year" id="year1" value="Freshman">
+                    {% endif %}
+                    <label class="form-check-label" for="year1">Freshman</label>
+                </div>
+                <div class="form-check">
+                    {% if user['year'] == 'Sophomore' %}
+                        <input class="form-check-input" type="radio" name="year" id="year2" value="Sophomore" checked>
+                    {% else %}
+                        <input class="form-check-input" type="radio" name="year" id="year2" value="Sophomore">
+                    {% endif %}
+                    <label class="form-check-label" for="year2">Sophomore</label>
+                </div>
+                <div class="form-check">
+                    {% if user['year'] == 'Junior' %}
+                        <input class="form-check-input" type="radio" name="year" id="year3" value="Junior" checked>
+                    {% else %}
+                        <input class="form-check-input" type="radio" name="year" id="year3" value="Junior">
+                    {% endif %}
+                    <label class="form-check-label" for="year3">Junior</label>
+                </div>
+                <div class="form-check">
+                    {% if user['year'] == 'Senior' %}
+                        <input class="form-check-input" type="radio" name="year" id="year4" value="Senior" checked>
+                    {% else %}
+                        <input class="form-check-input" type="radio" name="year" id="year4" value="Senior">
+                    {% endif %}
+                    <label class="form-check-label" for="year4">Senior</label>
+                </div>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputMajor" class="col-sm-2 col-form-label">Major(s)</label>
+            <div class="col-sm-6">
+                {% if user['major'] != 'N/A' %}
+                    <input name="major" type="text" placeholder="e.g., Computer Science" value="{{user['major']}}" class="form-control" id="inputMajor">
+                {% else %}
+                    <input name="major" type="text" placeholder="e.g., Computer Science" class="form-control" id="inputMajor">
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputMinor" class="col-sm-2 col-form-label">Minor(s)</label>
+            <div class="col-sm-6">
+                {% if user['minor'] != 'N/A' %}
+                    <input name="minor" type="text" placeholder="e.g., Philosophy" value="{{user['minor']}}" class="form-control" id="inputMinor">
+                {% else %}
+                    <input name="minor" type="text" placeholder="e.g., Philosophy" class="form-control" id="inputMinor">
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputCourses" class="col-sm-2 col-form-label">Courses Taken</label>
+            <div class="col-sm-6">
+                {% if user['courses'] != 'N/A' %}
+                    <input name="courses" type="text" placeholder="e.g., CS101, PH101" value="{{user['courses']}}" class="form-control" id="inputCourses">
+                {% else %}
+                    <input name="courses" type="text" placeholder="e.g., CS101, PH101" class="form-control" id="inputCourses">
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-4">
+            <div class="col-sm-12 text-center">
+                <h5>Please enter your password to save changes.</h5>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputPasswordConfirm" class="col-sm-3 col-form-label">
+                Password <font color="red">*</font> (<a href="{{url_for('change_password', userid=session['userid'])}}">Forgot your password?</a>)
+            </label>
+            <div class="col-sm-6">
+                <input name="password" type="password" placeholder="Password" class="form-control" id="inputPassword" required>
+            </div>
+        </div>
+        <div class="row justify-content-center pt-3">
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+    <div class="row text-center mt-4 mb-5">
+        <div class="col">
+            <a href="{{url_for('profile', userid=session['userid'])}}">Back to MyPage</a>
+        </div>
+    </div>
+{% endblock %}

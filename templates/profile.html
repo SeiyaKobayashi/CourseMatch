@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    <div class="text-center">
+        <div class="row mt-5">
+            <div class="col-12 pb-3">
+                <div class="row justify-content-center align-items-center">
+                    {% if editable %}
+                        <div class="col-12">
+                            <h3>Hello, {{user['name']}}!!</h3>
+                        </div>
+                    {% else %}
+                        <div class="col-12">
+                            <h3>{{user['name']}}</h3>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Email:</h5>
+                    </div>
+                    <div class="col-3">
+                        <h6>{{user['email']}}</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Gender:</h5>
+                    </div>
+                    <div class="col-3">
+                        <h6>{{user['gender']}}</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>School:</h5>
+                    </div>
+                    <div class="col-3">
+                        <h6>{{user['school']}}</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>School Year:</h5>
+                    </div>
+                    <div class="col-3">
+                        <h6>{{user['year']}}</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Major(s):</h5>
+                    </div>
+                    <div class="col-3">
+                        <h6>{{user['major']}}</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Minor(s):</h5>
+                    </div>
+                    <div class="col-3">
+                        <h6>{{user['minor']}}</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Courses:</h5>
+                    </div>
+                    <div class="col-3">
+                        <h6>{{user['courses']}}</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

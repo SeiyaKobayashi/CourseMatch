@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    <div class="row justify-content-center mt-5">
+        <h1>Login</h1>
+    </div>
+    <form action="{{url_for('login')}}" method="post">
+        <div class="form-group row justify-content-center pt-3">
+            <label for="inputEmail" class="col-sm-2 col-form-label">Email</label>
+            <div class="col-sm-6">
+                {% if session['email'] %}
+                    <input name="email" type="email" placeholder="Email" value="{{session['email']}}" class="form-control" id="inputEmail" required>
+                {% else %}
+                    <input name="email" type="email" placeholder="Email" class="form-control" id="inputEmail" required>
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputPassword" class="col-sm-2 col-form-label">Password</label>
+            <div class="col-sm-6">
+                <input name="password" type="password" placeholder="Password" class="form-control" id="inputPassword" required>
+            </div>
+        </div>
+        <div class="row justify-content-center pt-3">
+            <button type="submit" class="btn btn-primary">Login</button>
+        </div>
+    </form>
+    <div class="row text-center mt-4 mb-5">
+        <div class="col">
+            <a href="{{url_for('register')}}">New User? Register from Here!</a>
+        </div>
+    </div>
+{% endblock %}
