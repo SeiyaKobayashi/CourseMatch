@@ -28,11 +28,11 @@
                       Menu
                     </a>
                     <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                      <a class="dropdown-item" href="{{url_for('index_users')}}">Users</a>
-                      <div class="dropdown-divider"></div>
                       <a class="dropdown-item" href="{{url_for('update', userid=session['userid'])}}">Profile Update</a>
                       <div class="dropdown-divider"></div>
-                      <a class="dropdown-item" href="{{url_for('index_colleges')}}">Colleges</a>
+                      <a class="dropdown-item" href="{{url_for('index_users')}}">Users</a>
+                      <div class="dropdown-divider"></div>
+                      <a class="dropdown-item" href="{{url_for('index_colleges')}}">Course Search</a>
                       <div class="dropdown-divider"></div>
                       <a class="dropdown-item" href="{{url_for('logout')}}">Logout</a>
                       <div class="dropdown-divider"></div>

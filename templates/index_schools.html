@@ -1,7 +1,12 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    
+    <!-- breadcrumb -->
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{url_for('index_colleges')}}">Colleges</a></li>
+      <li class="breadcrumb-item active">Schools</li>
+    </ol>
+    <!-- breadcrumb end -->
     <div class="row justify-content-center mt-4">
         <div class="col-8 text-center">
             <h2 class="pb-3">Choose Your School (if applicable)</h2>

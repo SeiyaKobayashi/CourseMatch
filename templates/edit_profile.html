@@ -50,9 +50,33 @@
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
-            <label for="inputSchool" class="col-sm-2 col-form-label">School (College/University) <font color="red">*</font></label>
+            <label for="inputCollege" class="col-sm-2 col-form-label">College <font color="red">*</font></label>
             <div class="col-sm-6">
-                <input name="school" type="text" placeholder="e.g., Boston University" value="{{user['school']}}" class="form-control" id="inputSchool" required>
+                <select class="form-control" id="inputCollege" name="college" required>
+                    <option disabled>PLEASE SELECT YOUR COLLEGE/UNIVERSITY</option>
+                    {% for college in colleges %}
+                        {% if college['college'] == user['college'] %}
+                            <option value="{{college['college']}}" selected>{{college['college']}}</option>
+                        {% else %}
+                            <option value="{{college['college']}}">{{college['college']}}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputSchool" class="col-sm-2 col-form-label">School</label>
+            <div class="col-sm-6">
+                <select class="form-control" id="inputSchool" name="school" required>
+                    <option value="N/A" selected disabled>PLEASE SELECT YOUR SCHOOL</option>
+                    {% for school in schools %}
+                        {% if school['school'] == user['school'] %}
+                            <option value="{{school['school']}}" selected>{{school['school']}}</option>
+                        {% else %}
+                            <option value="{{school['school']}}">{{school['school']}}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
@@ -93,32 +117,60 @@
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
-            <label for="inputMajor" class="col-sm-2 col-form-label">Major(s)</label>
+            <label for="inputMajor" class="col-sm-2 col-form-label">Major</label>
             <div class="col-sm-6">
-                {% if user['major'] != 'N/A' %}
-                    <input name="major" type="text" placeholder="e.g., Computer Science" value="{{user['major']}}" class="form-control" id="inputMajor">
-                {% else %}
-                    <input name="major" type="text" placeholder="e.g., Computer Science" class="form-control" id="inputMajor">
-                {% endif %}
+                <select class="form-control" id="inputMajor" name="major" required>
+                    <option value="N/A" selected disabled>PLEASE SELECT YOUR MAJOR</option>
+                    <option disabled>-----------</option>
+                    <option value="Undeclared">Undeclared</option>
+                    {% for school in schools %}
+                        <option disabled>-----------</option>
+                        <option value="{{school['school']}}" disabled>{{school['school']}}</option>
+                        <option disabled>-----------</option>
+                        {% for department in departments %}
+                            {% if school['id'] == department['school_id'] %}
+                                {% if department['department'] == user['major'] %}
+                                    <option value="{{department['department']}}" selected>{{department['department']}}</option>
+                                {% else %}
+                                    <option value="{{department['department']}}">{{department['department']}}</option>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </select>
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
-            <label for="inputMinor" class="col-sm-2 col-form-label">Minor(s)</label>
+            <label for="inputMinor" class="col-sm-2 col-form-label">Minor</label>
             <div class="col-sm-6">
-                {% if user['minor'] != 'N/A' %}
-                    <input name="minor" type="text" placeholder="e.g., Philosophy" value="{{user['minor']}}" class="form-control" id="inputMinor">
-                {% else %}
-                    <input name="minor" type="text" placeholder="e.g., Philosophy" class="form-control" id="inputMinor">
-                {% endif %}
+                <select class="form-control" id="inputMinor" name="minor" required>
+                    <option value="N/A" selected disabled>PLEASE SELECT YOUR MINOR (IF APPLICABLE)</option>
+                    <option disabled>-----------</option>
+                    <option value="Undeclared">Undeclared</option>
+                    {% for school in schools %}
+                        <option disabled>-----------</option>
+                        <option value="{{school['school']}}" disabled>{{school['school']}}</option>
+                        <option disabled>-----------</option>
+                        {% for department in departments %}
+                            {% if school['id'] == department['school_id'] %}
+                                {% if department['department'] == user['minor'] %}
+                                    <option value="{{department['department']}}" selected>{{department['department']}}</option>
+                                {% else %}
+                                    <option value="{{department['department']}}">{{department['department']}}</option>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </select>
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
-            <label for="inputCourses" class="col-sm-2 col-form-label">Courses Taken</label>
+            <label for="inputProfile" class="col-sm-2 col-form-label">Profile</label>
             <div class="col-sm-6">
-                {% if user['courses'] != 'N/A' %}
-                    <input name="courses" type="text" placeholder="e.g., CS101, PH101" value="{{user['courses']}}" class="form-control" id="inputCourses">
+                {% if user['profile'] != 'N/A' %}
+                    <textarea name="profile" type="text" value="{{user['profile']}}" class="form-control" id="inputProfile">{{user['profile']}}</textarea>
                 {% else %}
-                    <input name="courses" type="text" placeholder="e.g., CS101, PH101" class="form-control" id="inputCourses">
+                    <textarea name="profile" type="text" class="form-control" id="inputProfile"></textarea>
                 {% endif %}
             </div>
         </div>

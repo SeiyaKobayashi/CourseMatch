@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <div class="row justify-content-center mt-5">
+    <div class="row justify-content-center mt-4">
         <h1>Register</h1>
     </div>
     <div class="row justify-content-center mt-2">
@@ -29,13 +29,14 @@
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
-            <label for="inputSchool" class="col-sm-2 col-form-label">School (College/University) <font color="red">*</font></label>
+            <label for="inputCollege" class="col-sm-2 col-form-label">College <font color="red">*</font></label>
             <div class="col-sm-6">
-                {% if session['school'] %}
-                    <input name="school" type="text" placeholder="e.g., Boston University" value="{{session['school']}}" class="form-control" id="inputSchool" required>
-                {% else %}
-                    <input name="school" type="text" placeholder="e.g., Boston University" class="form-control" id="inputSchool" required>
-                {% endif %}
+                <select class="form-control" id="inputCollege" name="college" required>
+                    <option disabled>PLEASE SELECT YOUR COLLEGE/UNIVERSITY</option>
+                    {% for college in colleges %}
+                        <option value="{{college['college']}}">{{college['college']}}</option>
+                    {% endfor %}
+                </select>
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
@@ -74,7 +75,7 @@
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
-            <label for="inputPasswordConfirm" class="col-sm-2 col-form-label">Password (Confirmation) <font color="red">*</font></label>
+            <label for="inputPasswordConfirm" class="col-sm-2 col-form-label">Password (Confirm) <font color="red">*</font></label>
             <div class="col-sm-6">
                 <input name="passwordconfirmation" type="password" placeholder="Password (Confirmation)" class="form-control" id="inputPasswordConfirm" required>
             </div>

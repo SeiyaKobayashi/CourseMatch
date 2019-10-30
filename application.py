@@ -1,6 +1,7 @@
 from flask import request, render_template, redirect, url_for, session, flash
 from init_db import app, init_db, get_db, modify_db, query_db
 from config import SECRET_KEY, emailRegEx, pwRegEx
+from scraping import scrapeSchools, scrapeDepartments, scrapeCourses
 from os import path
 from bs4 import BeautifulSoup
 import re
@@ -20,15 +21,16 @@ def register():
         return redirect(url_for('profile', userid=session['userid']))
     else:
         if request.method == 'GET':
-            return render_template("register.html", session=session)
+            colleges = query_db('college', "SELECT * FROM college")
+            return render_template("register.html", session=session, colleges=colleges)
         elif request.method == 'POST':
             # Store inputs (except password) in session to auto-fill the forms when redirected
-            session['name']   = request.form.get("name")
-            session['email']  = request.form.get("email")
-            session['school'] = request.form.get("school")
-            session['gender'] = request.form.get("gender") \
-                                if (request.form.get("gender") and request.form.get("gender") != 'PNTA') \
-                                else 'N/A'
+            session['name']    = request.form.get("name")
+            session['email']   = request.form.get("email")
+            session['college'] = request.form.get("college")
+            session['gender']  = request.form.get("gender") \
+                                 if (request.form.get("gender") and request.form.get("gender") != 'PNTA') \
+                                 else 'N/A'
 
             # Validate email (has to be unique, and has to contain @, followed by .)
             if re.fullmatch(emailRegEx, session['email']) == None:
@@ -50,10 +52,10 @@ def register():
                 return redirect(url_for("register"))
 
             # Store new user in DB only if passed all validations
-            modify_db('user', "INSERT INTO user (name, email, password, gender, school, year, major, minor, courses) \
-                       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            modify_db('user', "INSERT INTO user (name, email, password, gender, college, school, year, major, minor, profile) \
+                       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (session['name'], session['email'], request.form.get("password"), session['gender'],
-                       session['school'], 'N/A', 'N/A', 'N/A', 'N/A'))
+                       session['college'], 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'))
 
             # Store user ID in session just for convenience
             user = query_db('user', "SELECT * FROM user WHERE email = ?", (session['email'],), True)
@@ -155,20 +157,37 @@ def update(userid):
         return redirect(url_for('profile', userid=session['userid']))
     else:
         if request.method == 'GET':
-            user = query_db('user', "SELECT * FROM user WHERE id = ?", (session["userid"],), True)
-            return render_template("edit_profile.html", session=session, user=user)
+            user        = query_db('user', "SELECT * FROM user WHERE id = ?", (session["userid"],), True)
+            colleges    = query_db('college', "SELECT * FROM college")
+            schools     = query_db('school', "SELECT * FROM school WHERE college_id=?",
+                                   ((query_db('college', "SELECT * FROM college WHERE college=?", (user['college'],), True))['id'],))
+            departments = query_db('department', "SELECT * FROM department WHERE college_id=?",
+                                   ((query_db('college', "SELECT * FROM college WHERE college=?", (user['college'],), True))['id'],))
+            return render_template("edit_profile.html",
+                                    session=session,
+                                    user=user,
+                                    colleges=colleges,
+                                    schools=schools,
+                                    departments=departments)
         elif request.method == 'POST':
             # Avoid storing in session (might confuse users)
             name    = request.form.get("name")
             email   = request.form.get("email")
-            school  = request.form.get("school")
+            college = request.form.get("college")
+            school  = request.form.get("school") \
+                      if request.form.get("school") and request.form.get("school") != 'N/A' \
+                      else 'N/A'
             gender  = request.form.get("gender") \
                       if (request.form.get("gender") and request.form.get("gender") != 'PNTA') \
                       else 'N/A'
             year    = request.form.get("year") if request.form.get("year") else 'N/A'
-            major   = request.form.get("major") if request.form.get("major") else 'N/A'
-            minor   = request.form.get("minor") if request.form.get("minor") else 'N/A'
-            courses = request.form.get("courses") if request.form.get("courses") else 'N/A'
+            major   = request.form.get("major") \
+                      if request.form.get("major") and request.form.get("major") != 'N/A' \
+                      else 'N/A'
+            minor   = request.form.get("minor") \
+                      if request.form.get("minor") and request.form.get("minor") != 'N/A' \
+                      else 'N/A'
+            profile = request.form.get("profile") if request.form.get("profile") else 'N/A'
 
             # Validate email (has to be unique, and has to contain @, followed by .)
             if re.fullmatch(emailRegEx, request.form.get("email")) == None:
@@ -187,10 +206,10 @@ def update(userid):
 
             # Update user info in DB only if passed all validations
             modify_db('user', "UPDATE user \
-                       SET name=?, email=?, password=?, gender=?, school=?, year=?, major=?, minor=?, courses=?\
+                       SET name=?, email=?, password=?, gender=?, college=?, school=?, year=?, major=?, minor=?, profile=?\
                        WHERE id=?",
                        (name, email, request.form.get("password"), gender,
-                        school, year, major, minor, courses, userid))
+                        college, school, year, major, minor, profile, userid))
 
             flash(u"Your profile has been updated successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))
@@ -362,66 +381,6 @@ def init_app():
                                   VALUES(?, ?, ?, ?, ?, ?, ?)",
                                   (i+1, college['id'], school['id'], department['id'],
                                   courses[i]['course'], courses[i]['link'], 'N/A'))
-
-# Scrapes list of Schools
-def scrapeSchools(URL):
-    soup = BeautifulSoup(requests.get(URL).text, "html.parser")
-    rawData = soup.select('.school')
-    schoolsData = []
-
-    for i in range(len(rawData)):
-        schoolsData.append({'school': rawData[i].find('h3').text,
-                            'link': 'https://www.bu.edu' + rawData[i].find_all('a')[-1]['href'] + 'courses/'})
-
-    return schoolsData
-
-# Scrapes list of departments (name + link)
-def scrapeDepartments(URL):
-    soup = BeautifulSoup(requests.get(URL).text, "html.parser")
-    rawData = soup.select('.level_2')
-    departmentsData = []
-
-    # For school with no sub departments and med-school
-    if (len(rawData) == 0) or (len(rawData) == 1 and rawData[0].contents[0] == 'Clerkships & Sub-internships'):
-        departmentsData.append({'department': 'No Sub-Departments',
-                                'link': URL})
-    else:
-        for i in range(len(rawData)):
-            departmentsData.append({'department': rawData[i].contents[0],
-                                    'link': rawData[i]['href']})
-
-    return departmentsData
-
-# Scrapes list of courses (name + link)
-def scrapeCourses(departmentURL):
-    soup_all = BeautifulSoup(requests.get(departmentURL).text, "html.parser")
-    if soup_all.find('div', {'class': 'pagination'}) == None:
-        numOfPages = 1
-    else:
-        numOfPages = len(soup_all.find('div', {'class': 'pagination'}).find_all('a')) + 1
-
-    rawData = []
-    coursesData = []
-
-    for i in range(numOfPages):
-        if i == 0:
-            soup = BeautifulSoup(requests.get(departmentURL).text, "html.parser")
-        else:
-            soup = BeautifulSoup(requests.get(departmentURL+str(i+1)+'/').text, "html.parser")
-        rawData.extend(soup.find('ul', {'class': 'course-feed'}).find_all('li', {'class': None}))
-
-    for j in range(len(rawData)):
-        coursesData.append({'course': rawData[j].find('a').text,
-                            'link': 'https://www.bu.edu' + rawData[j].find('a')['href']})
-
-    return coursesData
-
-# Too slow
-# def scrapeCourseDescription(courseURL):
-#     soup = BeautifulSoup(requests.get(courseURL).text, "html.parser")
-#     descriptionData = soup.find('div', {'id': 'course-content'}).find('p').text
-#
-#     return descriptionData
 
 if __name__ == '__main__':
     app.secret_key = SECRET_KEY
