@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    
+    <div class="row justify-content-center mt-4">
+        <div class="col-8 text-center">
+            <h2 class="pb-3">Choose Your School (if applicable)</h2>
+            <ul class="list-group">
+                {% for school in schools %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="{{url_for('index_departments', collegeid=school[0]['college_id'], schoolid=school[0]['id'])}}">
+                            {{school[0]['school']}}
+                        </a>
+                        <span class="badge badge-primary badge-pill">
+                            {{school[1]}}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="row text-center mt-4 mb-5">
+        <div class="col">
+            <a href="{{url_for('profile', userid=session['userid'])}}">Back to MyPage</a>
+        </div>
+    </div>
+{% endblock %}

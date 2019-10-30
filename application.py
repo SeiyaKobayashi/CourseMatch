@@ -238,6 +238,83 @@ def index_users():
         users = query_db('user', "SELECT * FROM user")
         return render_template("index_users.html", users=users)
 
+# College index page
+@app.route("/colleges")
+def index_colleges():
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        colleges = query_db('college', "SELECT * FROM college")
+        collegesWithStats = [(college, len(query_db('school', "SELECT * FROM school WHERE college_id=?", (college['id'],))))
+                            if query_db('school', "SELECT * FROM school WHERE college_id=?", (college['id'],))
+                            else (college, 0)
+                            for college in colleges]
+        return render_template("index_colleges.html", colleges=collegesWithStats)
+
+# School index page
+@app.route("/schools/")
+def index_schools():
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        schools = query_db('school', "SELECT * FROM school WHERE college_id=?", (request.args.get('collegeid', 1),))
+        schoolsWithStats = [(school, len(query_db('department', "SELECT * FROM department WHERE college_id=? AND school_id=?",
+                            (request.args.get('collegeid', 1), school['id']))))
+                            if query_db('department', "SELECT * FROM department WHERE college_id=? AND school_id=?",
+                            (request.args.get('collegeid', 1), school['id']))
+                            else (school, 0)
+                            for school in schools]
+        return render_template("index_schools.html", schools=schoolsWithStats)
+
+# Department index page
+@app.route("/departments/")
+def index_departments():
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        departments = query_db('department', "SELECT * FROM department WHERE college_id=? AND school_id=?",
+                               (request.args.get('collegeid', 1), request.args.get('schoolid', 1)))
+        departmentsWithStats = [(department, len(query_db('course', "SELECT * FROM course \
+                                WHERE college_id = ? AND school_id=? AND department_id=? ",
+                                (request.args.get('collegeid', 1), request.args.get('schoolid', 1), department['id']))))
+                                if query_db('course', "SELECT * FROM course \
+                                   WHERE college_id = ? AND school_id=? AND department_id=? ",
+                                   (request.args.get('collegeid', 1), request.args.get('schoolid', 1), department['id']))
+                                else (department, 0)
+                                for department in departments]
+        return render_template("index_departments.html", departments=departmentsWithStats)
+
+# Course index page
+@app.route("/courses/")
+def index_courses():
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        courses = query_db('course', "SELECT * FROM course WHERE college_id=? AND school_id=? AND department_id=?",
+                           (request.args.get('collegeid', 1), request.args.get('schoolid', 1), request.args.get('departmentid', 1)))
+        return render_template("index_courses.html", courses=courses)
+
+# Course description page
+@app.route("/course/")
+def viewCourse():
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        course = query_db('course', "SELECT * FROM course WHERE college_id=? AND school_id=? AND department_id=? AND id=?",
+                         (request.args.get('collegeid', 1), request.args.get('schoolid', 1),
+                          request.args.get('departmentid', 1), request.args.get('courseid', 1)), True)
+        return render_template("course_profile.html", course=course)
+
 # Function to be run before app starts running
 @app.before_first_request
 def init_app():
@@ -246,73 +323,83 @@ def init_app():
 
     if not path.exists("models/college.db"):
         init_db("college")
-        modify_db('college', "INSERT INTO college (college) VALUES(?)", ('BU',))
+        # should be modified later
+        modify_db('college', "INSERT INTO college (college, link) VALUES(?, ?)",
+                  ('BU', 'https://www.bu.edu/academics/schools-colleges/'))
 
     if not path.exists("models/school.db"):
         init_db("school")
-        schools = scrapeSchools()
-        for i in range(len(schools)):
-            modify_db('school', "INSERT INTO school (id, college_id, school) VALUES(?, ?, ?)",
-                     (i+1, query_db('college', "SELECT * FROM college WHERE college=?", ('BU',), True)['id'], schools[i]))
+        colleges = query_db('college', "SELECT * FROM college")
+        for college in colleges:
+            schools = scrapeSchools(college['link'])
+            for i in range(len(schools)):
+                modify_db('school', "INSERT INTO school (id, college_id, school, link) VALUES(?, ?, ?, ?)",
+                          (i+1, college['id'], schools[i]['school'], schools[i]['link']))
 
     if not path.exists("models/department.db"):
         init_db("department")
-        departments = scrapeDepartments()
-        for i in range(len(departments)):
-            modify_db('department', "INSERT INTO department (id, college_id, school_id, department, link) VALUES(?, ?, ?, ?, ?)",
-                     (i+1,
-                      query_db('college', "SELECT * FROM college WHERE college=?", ('BU',), True)['id'],
-                      query_db('school', "SELECT * FROM school WHERE school=?", ('College of Arts & Sciences',), True)['id'],
-                      departments[i]['department'],
-                      departments[i]['link']))
+        colleges = query_db('college', "SELECT * FROM college")
+        for college in colleges:
+            schools = query_db('school', "SELECT * FROM school WHERE college_id=?", (college['id'],))
+            for school in schools:
+                departments = scrapeDepartments(school['link'])
+                for i in range(len(departments)):
+                    modify_db('department', "INSERT INTO department (id, college_id, school_id, department, link) VALUES(?, ?, ?, ?, ?)",
+                              (i+1, college['id'], school['id'], departments[i]['department'], departments[i]['link']))
 
     if not path.exists("models/course.db"):
         init_db("course")
-        id = 1
-        for department in query_db('department', "SELECT * FROM department"):
-            courses = scrapeCourses(department['link'])
-            for i in range(len(courses)):
-                modify_db('course', "INSERT INTO course (id, college_id, school_id, department_id, course, link, description) \
-                           VALUES(?, ?, ?, ?, ?, ?, ?)",
-                          (id,
-                           query_db('college', "SELECT * FROM college WHERE college=?", ('BU',), True)['id'],
-                           query_db('school', "SELECT * FROM school WHERE school=?", ('College of Arts & Sciences',), True)['id'],
-                           query_db('department', "SELECT * FROM department WHERE department=?",
-                                   (department['department'],), True)['id'],
-                           courses[i]['course'],
-                           courses[i]['link'],
-                           'N/A'
-                           ))
-                id += 1
+        colleges = query_db('college', "SELECT * FROM college")
+        for college in colleges:
+            schools = query_db('school', "SELECT * FROM school WHERE college_id=?", (college['id'],))
+            for school in schools:
+                departments = query_db('department', "SELECT * FROM department WHERE college_id=? AND school_id=?",
+                                       (college['id'], school['id']))
+                for department in departments:
+                    courses = scrapeCourses(department['link'])
+                    for i in range(len(courses)):
+                        modify_db('course', "INSERT INTO course (id, college_id, school_id, department_id, course, link, description) \
+                                  VALUES(?, ?, ?, ?, ?, ?, ?)",
+                                  (i+1, college['id'], school['id'], department['id'],
+                                  courses[i]['course'], courses[i]['link'], 'N/A'))
 
-def scrapeSchools(URL='https://www.bu.edu/academics/schools-colleges/'):
+# Scrapes list of Schools
+def scrapeSchools(URL):
     soup = BeautifulSoup(requests.get(URL).text, "html.parser")
     rawData = soup.select('.school')
     schoolsData = []
 
     for i in range(len(rawData)):
-        schoolsData.append(rawData[i].find('h3').text)
+        schoolsData.append({'school': rawData[i].find('h3').text,
+                            'link': 'https://www.bu.edu' + rawData[i].find_all('a')[-1]['href'] + 'courses/'})
 
     return schoolsData
 
-# Scrapes list of departments (name + link) from top page
-def scrapeDepartments(URL='https://www.bu.edu/academics/cas/courses/'):
+# Scrapes list of departments (name + link)
+def scrapeDepartments(URL):
     soup = BeautifulSoup(requests.get(URL).text, "html.parser")
     rawData = soup.select('.level_2')
-    departmentsData = {}
+    departmentsData = []
 
-    for i in range(len(rawData)):
-        departmentsData[i] = {'department': rawData[i].contents[0],
-                              'link': rawData[i]['href']}
+    # For school with no sub departments and med-school
+    if (len(rawData) == 0) or (len(rawData) == 1 and rawData[0].contents[0] == 'Clerkships & Sub-internships'):
+        departmentsData.append({'department': 'No Sub-Departments',
+                                'link': URL})
+    else:
+        for i in range(len(rawData)):
+            departmentsData.append({'department': rawData[i].contents[0],
+                                    'link': rawData[i]['href']})
 
     return departmentsData
 
+# Scrapes list of courses (name + link)
 def scrapeCourses(departmentURL):
     soup_all = BeautifulSoup(requests.get(departmentURL).text, "html.parser")
     if soup_all.find('div', {'class': 'pagination'}) == None:
         numOfPages = 1
     else:
         numOfPages = len(soup_all.find('div', {'class': 'pagination'}).find_all('a')) + 1
+
     rawData = []
     coursesData = []
 
@@ -328,6 +415,13 @@ def scrapeCourses(departmentURL):
                             'link': 'https://www.bu.edu' + rawData[j].find('a')['href']})
 
     return coursesData
+
+# Too slow
+# def scrapeCourseDescription(courseURL):
+#     soup = BeautifulSoup(requests.get(courseURL).text, "html.parser")
+#     descriptionData = soup.find('div', {'id': 'course-content'}).find('p').text
+#
+#     return descriptionData
 
 if __name__ == '__main__':
     app.secret_key = SECRET_KEY
