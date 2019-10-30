@@ -2,7 +2,9 @@ from flask import request, render_template, redirect, url_for, session, flash
 from init_db import app, init_db, get_db, modify_db, query_db
 from config import SECRET_KEY, emailRegEx, pwRegEx
 from os import path
+from bs4 import BeautifulSoup
 import re
+import requests
 
 # Top page
 @app.route("/")
@@ -32,7 +34,7 @@ def register():
             if re.fullmatch(emailRegEx, session['email']) == None:
                 flash(u"Invalid email address. Please try again.", 'warning')
                 return redirect(url_for("register"))
-            elif query_db("SELECT * FROM user WHERE email = ?", (session['email'],), True) != None:
+            elif query_db('user', "SELECT * FROM user WHERE email = ?", (session['email'],), True) != None:
                 flash(u"Entered email address is already taken. Please try again with other email address.", 'warning')
                 return redirect(url_for("register"))
 
@@ -48,13 +50,13 @@ def register():
                 return redirect(url_for("register"))
 
             # Store new user in DB only if passed all validations
-            modify_db("INSERT INTO user (name, email, password, gender, school, year, major, minor, courses) \
+            modify_db('user', "INSERT INTO user (name, email, password, gender, school, year, major, minor, courses) \
                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (session['name'], session['email'], request.form.get("password"), session['gender'],
                        session['school'], 'N/A', 'N/A', 'N/A', 'N/A'))
 
             # Store user ID in session just for convenience
-            user = query_db("SELECT * FROM user WHERE email = ?", (session['email'],), True)
+            user = query_db('user', "SELECT * FROM user WHERE email = ?", (session['email'],), True)
             session['userid'] = user['id']
 
             flash(u"Signed up successfully.", 'info')
@@ -75,7 +77,7 @@ def login():
             session['email'] = request.form.get("email")
 
             # Confirm user exists, and entered password matches the stored password
-            user = query_db("SELECT * FROM user WHERE email = ?", (session['email'],), True)
+            user = query_db('user', "SELECT * FROM user WHERE email = ?", (session['email'],), True)
             if user == None:
                 flash(u"Invalid email or password. Please try again.", 'warning')
                 return redirect(url_for("login"))
@@ -118,7 +120,7 @@ def delete(userid):
             return redirect(url_for('profile', userid=session['userid']))
         elif request.method == 'POST':
             # Delete user from DB
-            modify_db("DELETE FROM user WHERE id = ?", (session['userid'],))
+            modify_db('user', "DELETE FROM user WHERE id = ?", (session['userid'],))
             session.clear()
             flash(u"Your account has been deleted. We hope you come back again...", 'info')
             return redirect(url_for('top'))
@@ -131,7 +133,7 @@ def profile(userid):
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
     # Check if it's a valid user
-    user = query_db("SELECT * FROM user WHERE id = ?", (int(userid),), True)
+    user = query_db('user', "SELECT * FROM user WHERE id = ?", (int(userid),), True)
     if user == None:
         flash(u"User doesn't exist. Redirected to your profile page.", 'warning')
         return redirect(url_for('profile', userid=session['userid']))
@@ -153,7 +155,7 @@ def update(userid):
         return redirect(url_for('profile', userid=session['userid']))
     else:
         if request.method == 'GET':
-            user = query_db("SELECT * FROM user WHERE id = ?", (session["userid"],), True)
+            user = query_db('user', "SELECT * FROM user WHERE id = ?", (session["userid"],), True)
             return render_template("edit_profile.html", session=session, user=user)
         elif request.method == 'POST':
             # Avoid storing in session (might confuse users)
@@ -173,7 +175,7 @@ def update(userid):
                 flash(u"Invalid email address. Please try again.", 'warning')
                 return redirect(url_for("update", userid=session['userid']))
             else:
-                user = query_db("SELECT * FROM user WHERE email = ?", (request.form.get("email"),), True)
+                user = query_db('user', "SELECT * FROM user WHERE email = ?", (request.form.get("email"),), True)
                 if (user != None) and (user['id'] != session['userid']):
                     flash(u"Entered email address is already taken. Please try again with other email address.", 'warning')
                     return redirect(url_for("update", userid=session['userid']))
@@ -184,7 +186,7 @@ def update(userid):
                 return redirect(url_for("update", userid=session['userid']))
 
             # Update user info in DB only if passed all validations
-            modify_db("UPDATE user \
+            modify_db('user', "UPDATE user \
                        SET name=?, email=?, password=?, gender=?, school=?, year=?, major=?, minor=?, courses=?\
                        WHERE id=?",
                        (name, email, request.form.get("password"), gender,
@@ -220,7 +222,7 @@ def change_password(userid):
                 return redirect(url_for("change_password", userid=session['userid']))
 
             # Update password in DB only if passed all validations
-            modify_db("UPDATE user SET password=? WHERE id=?", (request.form.get("password"), session['userid']))
+            modify_db('user', "UPDATE user SET password=? WHERE id=?", (request.form.get("password"), session['userid']))
 
             flash(u"Your password has been updated successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))
@@ -233,14 +235,99 @@ def index_users():
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
     else:
-        users = query_db("SELECT * FROM user")
+        users = query_db('user', "SELECT * FROM user")
         return render_template("index_users.html", users=users)
 
 # Function to be run before app starts running
 @app.before_first_request
 def init_app():
     if not path.exists("models/user.db"):
-        init_db()
+        init_db("user")
+
+    if not path.exists("models/college.db"):
+        init_db("college")
+        modify_db('college', "INSERT INTO college (college) VALUES(?)", ('BU',))
+
+    if not path.exists("models/school.db"):
+        init_db("school")
+        schools = scrapeSchools()
+        for i in range(len(schools)):
+            modify_db('school', "INSERT INTO school (id, college_id, school) VALUES(?, ?, ?)",
+                     (i+1, query_db('college', "SELECT * FROM college WHERE college=?", ('BU',), True)['id'], schools[i]))
+
+    if not path.exists("models/department.db"):
+        init_db("department")
+        departments = scrapeDepartments()
+        for i in range(len(departments)):
+            modify_db('department', "INSERT INTO department (id, college_id, school_id, department, link) VALUES(?, ?, ?, ?, ?)",
+                     (i+1,
+                      query_db('college', "SELECT * FROM college WHERE college=?", ('BU',), True)['id'],
+                      query_db('school', "SELECT * FROM school WHERE school=?", ('College of Arts & Sciences',), True)['id'],
+                      departments[i]['department'],
+                      departments[i]['link']))
+
+    if not path.exists("models/course.db"):
+        init_db("course")
+        id = 1
+        for department in query_db('department', "SELECT * FROM department"):
+            courses = scrapeCourses(department['link'])
+            for i in range(len(courses)):
+                modify_db('course', "INSERT INTO course (id, college_id, school_id, department_id, course, link, description) \
+                           VALUES(?, ?, ?, ?, ?, ?, ?)",
+                          (id,
+                           query_db('college', "SELECT * FROM college WHERE college=?", ('BU',), True)['id'],
+                           query_db('school', "SELECT * FROM school WHERE school=?", ('College of Arts & Sciences',), True)['id'],
+                           query_db('department', "SELECT * FROM department WHERE department=?",
+                                   (department['department'],), True)['id'],
+                           courses[i]['course'],
+                           courses[i]['link'],
+                           'N/A'
+                           ))
+                id += 1
+
+def scrapeSchools(URL='https://www.bu.edu/academics/schools-colleges/'):
+    soup = BeautifulSoup(requests.get(URL).text, "html.parser")
+    rawData = soup.select('.school')
+    schoolsData = []
+
+    for i in range(len(rawData)):
+        schoolsData.append(rawData[i].find('h3').text)
+
+    return schoolsData
+
+# Scrapes list of departments (name + link) from top page
+def scrapeDepartments(URL='https://www.bu.edu/academics/cas/courses/'):
+    soup = BeautifulSoup(requests.get(URL).text, "html.parser")
+    rawData = soup.select('.level_2')
+    departmentsData = {}
+
+    for i in range(len(rawData)):
+        departmentsData[i] = {'department': rawData[i].contents[0],
+                              'link': rawData[i]['href']}
+
+    return departmentsData
+
+def scrapeCourses(departmentURL):
+    soup_all = BeautifulSoup(requests.get(departmentURL).text, "html.parser")
+    if soup_all.find('div', {'class': 'pagination'}) == None:
+        numOfPages = 1
+    else:
+        numOfPages = len(soup_all.find('div', {'class': 'pagination'}).find_all('a')) + 1
+    rawData = []
+    coursesData = []
+
+    for i in range(numOfPages):
+        if i == 0:
+            soup = BeautifulSoup(requests.get(departmentURL).text, "html.parser")
+        else:
+            soup = BeautifulSoup(requests.get(departmentURL+str(i+1)+'/').text, "html.parser")
+        rawData.extend(soup.find('ul', {'class': 'course-feed'}).find_all('li', {'class': None}))
+
+    for j in range(len(rawData)):
+        coursesData.append({'course': rawData[j].find('a').text,
+                            'link': 'https://www.bu.edu' + rawData[j].find('a')['href']})
+
+    return coursesData
 
 if __name__ == '__main__':
     app.secret_key = SECRET_KEY
