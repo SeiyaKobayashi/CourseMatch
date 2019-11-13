@@ -1,7 +1,6 @@
 CREATE TABLE School (
-  id         INTEGER,
+  id         INTEGER PRIMARY KEY,
   college_id INTEGER,
-  school     VARCHAR(255) UNIQUE,
-  link       TEXT UNIQUE,
-  PRIMARY KEY(id, college_id)
+  name       VARCHAR(255),
+  link       TEXT UNIQUE
 );

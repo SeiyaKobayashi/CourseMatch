@@ -1,3 +1,6 @@
+from bs4 import BeautifulSoup
+import requests
+
 # Scrapes list of Schools
 def scrapeSchools(URL):
     soup = BeautifulSoup(requests.get(URL).text, "html.parser")

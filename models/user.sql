@@ -4,10 +4,12 @@ CREATE TABLE User (
   email    VARCHAR(255) UNIQUE,
   password VARCHAR(255),
   gender   VARCHAR(255),
-  college  VARCHAR(255),
-  school   VARCHAR(255),
+  college  INTEGER,
+  school   INTEGER,
   year     VARCHAR(255),
-  major    VARCHAR(255),
-  minor    VARCHAR(255),
+  major_1  INTEGER,
+  major_2  INTEGER,
+  minor_1  INTEGER,
+  minor_2  INTEGER,
   profile  TEXT
 );

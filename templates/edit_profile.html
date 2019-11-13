@@ -55,10 +55,10 @@
                 <select class="form-control" id="inputCollege" name="college" required>
                     <option disabled>PLEASE SELECT YOUR COLLEGE/UNIVERSITY</option>
                     {% for college in colleges %}
-                        {% if college['college'] == user['college'] %}
-                            <option value="{{college['college']}}" selected>{{college['college']}}</option>
+                        {% if college['id'] == user['college'] %}
+                            <option value="{{college['id']}}" selected>{{college['name']}}</option>
                         {% else %}
-                            <option value="{{college['college']}}">{{college['college']}}</option>
+                            <option value="{{college['id']}}">{{college['name']}}</option>
                         {% endif %}
                     {% endfor %}
                 </select>
@@ -68,12 +68,12 @@
             <label for="inputSchool" class="col-sm-2 col-form-label">School</label>
             <div class="col-sm-6">
                 <select class="form-control" id="inputSchool" name="school" required>
-                    <option value="N/A" selected disabled>PLEASE SELECT YOUR SCHOOL</option>
+                    <option value="{{None}}" selected disabled>PLEASE SELECT YOUR SCHOOL</option>
                     {% for school in schools %}
-                        {% if school['school'] == user['school'] %}
-                            <option value="{{school['school']}}" selected>{{school['school']}}</option>
+                        {% if school['id'] == user['school'] %}
+                            <option value="{{school['id']}}" selected>{{school['name']}}</option>
                         {% else %}
-                            <option value="{{school['school']}}">{{school['school']}}</option>
+                            <option value="{{school['id']}}">{{school['name']}}</option>
                         {% endif %}
                     {% endfor %}
                 </select>
@@ -117,22 +117,26 @@
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
-            <label for="inputMajor" class="col-sm-2 col-form-label">Major</label>
+            <label for="inputMajor_1" class="col-sm-2 col-form-label">Major#1</label>
             <div class="col-sm-6">
-                <select class="form-control" id="inputMajor" name="major" required>
-                    <option value="N/A" selected disabled>PLEASE SELECT YOUR MAJOR</option>
+                <select class="form-control" id="inputMajor_1" name="major_1">
+                    <option value="{{None}}" selected disabled>PLEASE SELECT YOUR 1ST MAJOR</option>
                     <option disabled>-----------</option>
-                    <option value="Undeclared">Undeclared</option>
+                    {% if user['major_1'] == 0 %}
+                        <option value="0" selected>Undeclared</option>
+                    {% else %}
+                        <option value="0">Undeclared</option>
+                    {% endif %}
                     {% for school in schools %}
                         <option disabled>-----------</option>
-                        <option value="{{school['school']}}" disabled>{{school['school']}}</option>
+                        <option disabled>{{school['name']}}</option>
                         <option disabled>-----------</option>
                         {% for department in departments %}
                             {% if school['id'] == department['school_id'] %}
-                                {% if department['department'] == user['major'] %}
-                                    <option value="{{department['department']}}" selected>{{department['department']}}</option>
+                                {% if department['id'] == user['major_1'] %}
+                                    <option value="{{department['id']}}" selected>{{department['name']}}</option>
                                 {% else %}
-                                    <option value="{{department['department']}}">{{department['department']}}</option>
+                                    <option value="{{department['id']}}">{{department['name']}}</option>
                                 {% endif %}
                             {% endif %}
                         {% endfor %}
@@ -141,22 +145,82 @@
             </div>
         </div>
         <div class="form-group row justify-content-center pt-2">
-            <label for="inputMinor" class="col-sm-2 col-form-label">Minor</label>
+            <label for="inputMajor_2" class="col-sm-2 col-form-label">Major#2</label>
             <div class="col-sm-6">
-                <select class="form-control" id="inputMinor" name="minor" required>
-                    <option value="N/A" selected disabled>PLEASE SELECT YOUR MINOR (IF APPLICABLE)</option>
+                <select class="form-control" id="inputMajor_2" name="major_2">
+                    <option value="{{None}}" selected disabled>PLEASE SELECT YOUR 2ND MAJOR (IF APPLICABLE)</option>
                     <option disabled>-----------</option>
-                    <option value="Undeclared">Undeclared</option>
+                    {% if user['major_2'] == 0 %}
+                        <option value="0" selected>Undeclared</option>
+                    {% else %}
+                        <option value="0">Undeclared</option>
+                    {% endif %}
                     {% for school in schools %}
                         <option disabled>-----------</option>
-                        <option value="{{school['school']}}" disabled>{{school['school']}}</option>
+                        <option disabled>{{school['name']}}</option>
                         <option disabled>-----------</option>
                         {% for department in departments %}
                             {% if school['id'] == department['school_id'] %}
-                                {% if department['department'] == user['minor'] %}
-                                    <option value="{{department['department']}}" selected>{{department['department']}}</option>
+                                {% if department['id'] == user['major_2'] %}
+                                    <option value="{{department['id']}}" selected>{{department['name']}}</option>
                                 {% else %}
-                                    <option value="{{department['department']}}">{{department['department']}}</option>
+                                    <option value="{{department['id']}}">{{department['name']}}</option>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputMinor_1" class="col-sm-2 col-form-label">Minor#1</label>
+            <div class="col-sm-6">
+                <select class="form-control" id="inputMinor_1" name="minor_1">
+                    <option value="{{None}}" selected disabled>PLEASE SELECT YOUR 1ST MINOR (IF APPLICABLE)</option>
+                    <option disabled>-----------</option>
+                    {% if user['minor_1'] == 0 %}
+                        <option value="0" selected>Undeclared</option>
+                    {% else %}
+                        <option value="0">Undeclared</option>
+                    {% endif %}
+                    {% for school in schools %}
+                        <option disabled>-----------</option>
+                        <option disabled>{{school['name']}}</option>
+                        <option disabled>-----------</option>
+                        {% for department in departments %}
+                            {% if school['id'] == department['school_id'] %}
+                                {% if department['id'] == user['minor_1'] %}
+                                    <option value="{{department['id']}}" selected>{{department['name']}}</option>
+                                {% else %}
+                                    <option value="{{department['id']}}">{{department['name']}}</option>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group row justify-content-center pt-2">
+            <label for="inputMinor_2" class="col-sm-2 col-form-label">Minor#2</label>
+            <div class="col-sm-6">
+                <select class="form-control" id="inputMinor_2" name="major_2">
+                    <option value="{{None}}" selected disabled>PLEASE SELECT YOUR 2ND MINOR (IF APPLICABLE)</option>
+                    <option disabled>-----------</option>
+                    {% if user['minor_2'] == 0 %}
+                        <option value="0" selected>Undeclared</option>
+                    {% else %}
+                        <option value="0">Undeclared</option>
+                    {% endif %}
+                    {% for school in schools %}
+                        <option disabled>-----------</option>
+                        <option disabled>{{school['name']}}</option>
+                        <option disabled>-----------</option>
+                        {% for department in departments %}
+                            {% if school['id'] == department['school_id'] %}
+                                {% if department['id'] == user['minor_2'] %}
+                                    <option value="{{department['id']}}" selected>{{department['name']}}</option>
+                                {% else %}
+                                    <option value="{{department['id']}}">{{department['name']}}</option>
                                 {% endif %}
                             {% endif %}
                         {% endfor %}
@@ -167,8 +231,10 @@
         <div class="form-group row justify-content-center pt-2">
             <label for="inputProfile" class="col-sm-2 col-form-label">Profile</label>
             <div class="col-sm-6">
-                {% if user['profile'] != 'N/A' %}
-                    <textarea name="profile" type="text" value="{{user['profile']}}" class="form-control" id="inputProfile">{{user['profile']}}</textarea>
+                {% if user['profile'] != None %}
+                    <textarea name="profile" type="text" value="{{user['profile']}}" class="form-control" id="inputProfile">
+                        {{user['profile']}}
+                    </textarea>
                 {% else %}
                     <textarea name="profile" type="text" class="form-control" id="inputProfile"></textarea>
                 {% endif %}

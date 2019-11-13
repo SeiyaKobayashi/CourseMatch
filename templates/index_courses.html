@@ -1,36 +1,37 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <!-- breadcrumb -->
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{{url_for('index_colleges')}}">Colleges</a></li>
-      <li class="breadcrumb-item"><a href="{{url_for('index_schools', collegeid=courses[0]['college_id'])}}">Schools</a></li>
-      <li class="breadcrumb-item">
-          <a href="{{url_for('index_departments', collegeid=courses[0]['college_id'], schoolid=courses[0]['school_id'])}}">Departments</a>
-      </li>
-      <li class="breadcrumb-item active">Courses</li>
-    </ol>
-    <!-- breadcrumb end -->
     <div class="row justify-content-center mt-4">
         <div class="col-8 text-center">
-            <h2 class="pb-3">Courses</h2>
+            <h2 class="pb-1">Courses</h2>
+            <p class="pb-3">Courses with check marks are the ones you've taken before.</p>
             <ul class="list-group">
-                {% for course in courses %}
+                {% for courseWithStats in coursesWithStats %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <a href="{{url_for('viewCourse', collegeid=course['college_id'],
-                                                         schoolid=course['school_id'],
-                                                         departmentid=course['department_id'],
-                                                         courseid=course['id'])}}">
-                            {{course['course']}}
+                        <a href="{{url_for('viewCourse', collegeid=courseWithStats['course']['college_id'],
+                                                         schoolid=courseWithStats['course']['school_id'],
+                                                         departmentid=courseWithStats['course']['department_id'],
+                                                         courseid=courseWithStats['course']['id'])}}">
+                            {{courseWithStats['course']['name']}}
                         </a>
+                        <div class="form-check pb-4">
+                            {% if courseWithStats['taken'] %}
+                                <input name="coursesTaken" class="form-check-input"
+                                       type="checkbox" value="{{courseWithStats['course']['id']}}" disabled checked>
+                            {% else %}
+                                <input name="coursesTaken" class="form-check-input"
+                                       type="checkbox" value="{{courseWithStats['course']['id']}}" disabled>
+                            {% endif %}
+                        </div>
                     </li>
                 {% endfor %}
             </ul>
         </div>
     </div>
-    <div class="row text-center mt-4 mb-5">
-        <div class="col">
+    <div class="row text-center justify-content-center mt-5 mb-5">
+        <div class="col-12">
             <a href="{{url_for('profile', userid=session['userid'])}}">Back to MyPage</a>
         </div>
     </div>
+
 {% endblock %}

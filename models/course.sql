@@ -1,10 +1,8 @@
 CREATE TABLE Course (
-  id            INTEGER,
+  id            INTEGER PRIMARY KEY,
   college_id    INTEGER,
   school_id     INTEGER,
   department_id INTEGER,
-  course        VARCHAR(255),
-  link          TEXT,
-  description   TEXT,
-  PRIMARY KEY(id, college_id, school_id, department_id)
+  name          VARCHAR(255),
+  link          TEXT
 );

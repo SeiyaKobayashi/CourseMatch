@@ -8,6 +8,8 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
         <!-- JavaScript -->
         <script src="../static/js/bootstrap.min.js"></script>
+        <!--  ChartJS -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
         <title>CourseMatch</title>
     </head>
     <body>
@@ -42,6 +44,43 @@
                 </ul>
               </div>
             </nav>
+            <!-- breadcrumb -->
+            {% if session['courseSearch'] %}
+                <ol class="breadcrumb mb-0">
+                {% if session['courseSearch'] == 'colleges' %}
+                  <li class="breadcrumb-item active">Colleges</li>
+                {% elif session['courseSearch'] == 'schools' %}
+                  <li class="breadcrumb-item"><a href="{{url_for('index_colleges')}}">Colleges</a></li>
+                  <li class="breadcrumb-item active">Schools</li>
+                {% elif session['courseSearch'] == 'departments' %}
+                  <li class="breadcrumb-item"><a href="{{url_for('index_colleges')}}">Colleges</a></li>
+                  <li class="breadcrumb-item"><a href="{{url_for('index_schools', collegeid=departments[0][0]['college_id'])}}">Schools</a></li>
+                  <li class="breadcrumb-item active">Departments</li>
+                {% elif session['courseSearch'] == 'courses' %}
+                  <li class="breadcrumb-item">
+                      <a href="{{url_for('index_colleges')}}">Colleges</a>
+                  </li>
+                  <li class="breadcrumb-item">
+                      <a href="{{url_for('index_schools', collegeid=coursesWithStats[0]['course']['college_id'])}}">Schools</a>
+                  </li>
+                  <li class="breadcrumb-item">
+                      <a href="{{url_for('index_departments', collegeid=coursesWithStats[0]['course']['college_id'], schoolid=coursesWithStats[0]['course']['school_id'])}}">Departments</a>
+                  </li>
+                  <li class="breadcrumb-item active">Courses</li>
+                {% elif session['courseSearch'] == 'course' %}
+                  <li class="breadcrumb-item"><a href="{{url_for('index_colleges')}}">Colleges</a></li>
+                  <li class="breadcrumb-item"><a href="{{url_for('index_schools', collegeid=course['college_id'])}}">Schools</a></li>
+                  <li class="breadcrumb-item">
+                      <a href="{{url_for('index_departments', collegeid=course['college_id'], schoolid=course['school_id'])}}">Departments</a>
+                  </li>
+                  <li class="breadcrumb-item">
+                      <a href="{{url_for('index_courses', collegeid=course['college_id'], schoolid=course['school_id'], departmentid=course['department_id'])}}">Courses</a>
+                  </li>
+                  <li class="breadcrumb-item active">{{course['name']}}</li>
+                {% endif %}
+                </ol>
+            {% endif %}
+            <!-- breadcrumb end -->
             <!-- Modal -->
             <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
               <div class="modal-dialog" role="document">

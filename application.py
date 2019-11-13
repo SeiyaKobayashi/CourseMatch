@@ -1,15 +1,14 @@
 from flask import request, render_template, redirect, url_for, session, flash
-from init_db import app, init_db, get_db, modify_db, query_db
+from init_db import app, get_db, modify_db, query_db
 from config import SECRET_KEY, emailRegEx, pwRegEx
-from scraping import scrapeSchools, scrapeDepartments, scrapeCourses
-from os import path
-from bs4 import BeautifulSoup
 import re
-import requests
+import json
 
 # Top page
 @app.route("/")
 def top():
+    if 'courseSearch' in session:
+        session.pop('courseSearch', None)
     return render_template("top.html")
 
 # Register (Sign-Up) page
@@ -22,7 +21,7 @@ def register():
     else:
         if request.method == 'GET':
             colleges = query_db('college', "SELECT * FROM college")
-            return render_template("register.html", session=session, colleges=colleges)
+            return render_template("register.html", colleges=colleges)
         elif request.method == 'POST':
             # Store inputs (except password) in session to auto-fill the forms when redirected
             session['name']    = request.form.get("name")
@@ -51,15 +50,28 @@ def register():
                 flash(u"Passwords don't match. Please make sure to input the same valid password twice.", 'warning')
                 return redirect(url_for("register"))
 
+            # College must be selected at the time of registration
+            if session['college'] == None:
+                flash(u"Please select your college.", 'warning')
+                return redirect(url_for("register"))
+
             # Store new user in DB only if passed all validations
-            modify_db('user', "INSERT INTO user (name, email, password, gender, college, school, year, major, minor, profile) \
-                       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            modify_db('user',
+                      "INSERT INTO user (name, email, password, gender, college, school, year, \
+                      major_1, major_2, minor_1, minor_2, profile) \
+                      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (session['name'], session['email'], request.form.get("password"), session['gender'],
-                       session['college'], 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'))
+                       int(session['college']), None, None, None, None, None, None, None))
 
             # Store user ID in session just for convenience
             user = query_db('user', "SELECT * FROM user WHERE email = ?", (session['email'],), True)
             session['userid'] = user['id']
+
+            # Clear session to avoid related bugs
+            session.pop('name', None)
+            session.pop('email', None)
+            session.pop('gender', None)
+            session.pop('college', None)
 
             flash(u"Signed up successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))
@@ -73,7 +85,7 @@ def login():
         return redirect(url_for('profile', userid=session['userid']))
     else:
         if request.method == 'GET':
-            return render_template("login.html", session=session)
+            return render_template("login.html")
         elif request.method == 'POST':
             # Store inputs (except password) in session to auto-fill the forms when redirected
             session['email'] = request.form.get("email")
@@ -86,6 +98,9 @@ def login():
             elif request.form.get("password") != user['password']:
                 flash(u"Invalid email or password. Please try again.", 'warning')
                 return redirect(url_for("login"))
+
+            # Clear session to avoid related bugs
+            session.pop('email', None)
 
             # Store user ID in session just for convenience
             session['userid'] = user['id']
@@ -117,6 +132,8 @@ def delete(userid):
         flash(u"You cannot detele other users' accounts. Redirected to your profile page.", 'warning')
         return redirect(url_for('profile', userid=session['userid']))
     else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
         if request.method == 'GET':
             flash(u"You're not allowed to access this page by directly typing URL.", 'warning')
             return redirect(url_for('profile', userid=session['userid']))
@@ -139,10 +156,32 @@ def profile(userid):
     if user == None:
         flash(u"User doesn't exist. Redirected to your profile page.", 'warning')
         return redirect(url_for('profile', userid=session['userid']))
-    elif user['id'] != session['userid']:
-        return render_template("profile.html", user=user, editable=False)
     else:
-        return render_template("profile.html", user=user, editable=True)
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        college = query_db('college', "SELECT * FROM college WHERE id = ?", (user['college'],), True)
+        school = query_db('school', "SELECT * FROM school WHERE id = ?", (user['school'],), True)
+        major_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_1'],), True)
+        major_2 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_2'],), True)
+        minor_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['minor_1'],), True)
+        minor_2 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['minor_2'],), True)
+        courseIds_taken = [course['course_id'] for course
+                           in query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id = ? AND taken=?",
+                           (user['id'], 1))]
+        courses_taken = [query_db('course', "SELECT * FROM course WHERE id = ?", (courseId,), True) for courseId in courseIds_taken]
+        courseIds_taking = [course['course_id'] for course
+                            in query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id = ? AND taking=?",
+                            (user['id'], 1))]
+        courses_taking = [query_db('course', "SELECT * FROM course WHERE id = ?", (courseId,), True) for courseId in courseIds_taking]
+
+        if user['id'] != session['userid']:
+            return render_template("profile.html", user=user, college=college, school=school,
+                                   major_1=major_1, major_2=major_2, minor_1=minor_1, minor_2=minor_2,
+                                   courses_taken=courses_taken, courses_taking=courses_taking, editable=False)
+        else:
+            return render_template("profile.html", user=user, college=college, school=school,
+                                   major_1=major_1, major_2=major_2, minor_1=minor_1, minor_2=minor_2,
+                                   courses_taken=courses_taken, courses_taking=courses_taking, editable=True)
 
 # Profile update page
 @app.route("/<int:userid>/edit", methods=["GET", "POST"])
@@ -156,38 +195,29 @@ def update(userid):
         flash(u"You cannot edit other users' profile. Redirected to your profile page.", 'warning')
         return redirect(url_for('profile', userid=session['userid']))
     else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
         if request.method == 'GET':
             user        = query_db('user', "SELECT * FROM user WHERE id = ?", (session["userid"],), True)
             colleges    = query_db('college', "SELECT * FROM college")
-            schools     = query_db('school', "SELECT * FROM school WHERE college_id=?",
-                                   ((query_db('college', "SELECT * FROM college WHERE college=?", (user['college'],), True))['id'],))
-            departments = query_db('department', "SELECT * FROM department WHERE college_id=?",
-                                   ((query_db('college', "SELECT * FROM college WHERE college=?", (user['college'],), True))['id'],))
-            return render_template("edit_profile.html",
-                                    session=session,
-                                    user=user,
-                                    colleges=colleges,
-                                    schools=schools,
-                                    departments=departments)
+            schools     = query_db('school', "SELECT * FROM school WHERE college_id=?", (user['college'],))
+            departments = query_db('department', "SELECT * FROM department WHERE college_id=?", (user['college'],))
+            return render_template("edit_profile.html", user=user, colleges=colleges, schools=schools, departments=departments)
         elif request.method == 'POST':
             # Avoid storing in session (might confuse users)
             name    = request.form.get("name")
             email   = request.form.get("email")
-            college = request.form.get("college")
-            school  = request.form.get("school") \
-                      if request.form.get("school") and request.form.get("school") != 'N/A' \
-                      else 'N/A'
+            college = int(request.form.get("college"))
+            school  = int(request.form.get("school")) if request.form.get("school") else None
             gender  = request.form.get("gender") \
                       if (request.form.get("gender") and request.form.get("gender") != 'PNTA') \
                       else 'N/A'
-            year    = request.form.get("year") if request.form.get("year") else 'N/A'
-            major   = request.form.get("major") \
-                      if request.form.get("major") and request.form.get("major") != 'N/A' \
-                      else 'N/A'
-            minor   = request.form.get("minor") \
-                      if request.form.get("minor") and request.form.get("minor") != 'N/A' \
-                      else 'N/A'
-            profile = request.form.get("profile") if request.form.get("profile") else 'N/A'
+            year    = request.form.get("year") if request.form.get("year") else None
+            major_1 = int(request.form.get("major_1")) if request.form.get("major_1") else None
+            major_2 = int(request.form.get("major_2")) if request.form.get("major_2") else None
+            minor_1 = int(request.form.get("minor_1")) if request.form.get("minor_1") else None
+            minor_2 = int(request.form.get("minor_2")) if request.form.get("minor_2") else None
+            profile = request.form.get("profile") if request.form.get("profile") else None
 
             # Validate email (has to be unique, and has to contain @, followed by .)
             if re.fullmatch(emailRegEx, request.form.get("email")) == None:
@@ -206,10 +236,10 @@ def update(userid):
 
             # Update user info in DB only if passed all validations
             modify_db('user', "UPDATE user \
-                       SET name=?, email=?, password=?, gender=?, college=?, school=?, year=?, major=?, minor=?, profile=?\
-                       WHERE id=?",
-                       (name, email, request.form.get("password"), gender,
-                        college, school, year, major, minor, profile, userid))
+                       SET name=?, email=?, password=?, gender=?, college=?, school=?, year=?, major_1=?, \
+                       major_2=?, minor_1=?, minor_2=?, profile=? WHERE id=?",
+                       (name, email, request.form.get("password"), gender, college, school,
+                        year, major_1, major_2, minor_1, minor_2, profile, session['userid']))
 
             flash(u"Your profile has been updated successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))
@@ -226,8 +256,10 @@ def change_password(userid):
         flash(u"You cannot change other users' password. Redirected to your profile page.", 'warning')
         return redirect(url_for('profile', userid=session['userid']))
     else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
         if request.method == 'GET':
-            return render_template("change_password.html", session=session)
+            return render_template("change_password.html")
         elif request.method == 'POST':
             # Validate password (has to be longer than 8 characters,
             # and has to contain at least one uppercase, lowercase, and digit, respectively)
@@ -254,8 +286,10 @@ def index_users():
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
     else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
         users = query_db('user', "SELECT * FROM user")
-        return render_template("index_users.html", users=users)
+        return render_template("index_users.html", users=users, query_db=query_db)
 
 # College index page
 @app.route("/colleges")
@@ -265,6 +299,11 @@ def index_colleges():
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
     else:
+        # Store search info in session for displaying breadcrumb
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        session['courseSearch'] = 'colleges'
+
         colleges = query_db('college', "SELECT * FROM college")
         collegesWithStats = [(college, len(query_db('school', "SELECT * FROM school WHERE college_id=?", (college['id'],))))
                             if query_db('school', "SELECT * FROM school WHERE college_id=?", (college['id'],))
@@ -280,6 +319,11 @@ def index_schools():
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
     else:
+        # Store search info in session for displaying breadcrumb
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        session['courseSearch'] = 'schools'
+
         schools = query_db('school', "SELECT * FROM school WHERE college_id=?", (request.args.get('collegeid', 1),))
         schoolsWithStats = [(school, len(query_db('department', "SELECT * FROM department WHERE college_id=? AND school_id=?",
                             (request.args.get('collegeid', 1), school['id']))))
@@ -297,6 +341,11 @@ def index_departments():
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
     else:
+        # Store search info in session for displaying breadcrumb
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        session['courseSearch'] = 'departments'
+
         departments = query_db('department', "SELECT * FROM department WHERE college_id=? AND school_id=?",
                                (request.args.get('collegeid', 1), request.args.get('schoolid', 1)))
         departmentsWithStats = [(department, len(query_db('course', "SELECT * FROM course \
@@ -317,9 +366,23 @@ def index_courses():
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
     else:
+        # Store search info in session for displaying breadcrumb
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        session['courseSearch'] = 'courses'
+
         courses = query_db('course', "SELECT * FROM course WHERE college_id=? AND school_id=? AND department_id=?",
-                           (request.args.get('collegeid', 1), request.args.get('schoolid', 1), request.args.get('departmentid', 1)))
-        return render_template("index_courses.html", courses=courses)
+                           (request.args.get('collegeid', 1), request.args.get('schoolid', 1),
+                            request.args.get('departmentid', 1)))
+        coursesWithStats = []
+        for course in courses:
+            if (query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=? AND taken=?", (session['userid'], course['id'], True))
+               or query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=? AND taking=?", (session['userid'], course['id'], True))):
+                coursesWithStats.append({'course': course, 'taken': True})
+            else:
+                coursesWithStats.append({'course': course, 'taken': False})
+
+        return render_template("index_courses.html", coursesWithStats=coursesWithStats, request=request)
 
 # Course description page
 @app.route("/course/")
@@ -329,59 +392,143 @@ def viewCourse():
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
     else:
+        # Store search info in session for displaying breadcrumb
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        session['courseSearch'] = 'course'
+
         course = query_db('course', "SELECT * FROM course WHERE college_id=? AND school_id=? AND department_id=? AND id=?",
-                         (request.args.get('collegeid', 1), request.args.get('schoolid', 1),
-                          request.args.get('departmentid', 1), request.args.get('courseid', 1)), True)
-        return render_template("course_profile.html", course=course)
+                          (request.args.get('collegeid', 1), request.args.get('schoolid', 1),
+                           request.args.get('departmentid', 1), request.args.get('courseid', 1)), True)
+        taking = True if query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=? AND taking=?",
+                                  (session['userid'], course['id'], 1), True) else False
+        if taking:
+            taken = False
+        else:
+            if not query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=?",
+                            (session['userid'], course['id']), True):
+                taken = False
+            else:
+                taken = True if query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=?",
+                                         (session['userid'], course['id']), True)['taken'] == 1 else False
 
-# Function to be run before app starts running
-@app.before_first_request
-def init_app():
-    if not path.exists("models/user.db"):
-        init_db("user")
+        reviews = query_db('course_review', "SELECT * FROM CourseReview WHERE course_id=?", (course['id'],))
+        wroteReview = True if query_db('course_review', "SELECT * FROM CourseReview WHERE user_id=? AND course_id=?",
+                                       (session['userid'], course['id']), True) else False
 
-    if not path.exists("models/college.db"):
-        init_db("college")
-        # should be modified later
-        modify_db('college', "INSERT INTO college (college, link) VALUES(?, ?)",
-                  ('BU', 'https://www.bu.edu/academics/schools-colleges/'))
+        # Have to convert Row object to list or dict to properly parse data in JS
+        reviews_for_graphs = []
+        for review in reviews:
+            reviews_for_graphs.append({key: review[key] for key in review.keys()})
 
-    if not path.exists("models/school.db"):
-        init_db("school")
-        colleges = query_db('college', "SELECT * FROM college")
-        for college in colleges:
-            schools = scrapeSchools(college['link'])
-            for i in range(len(schools)):
-                modify_db('school', "INSERT INTO school (id, college_id, school, link) VALUES(?, ?, ?, ?)",
-                          (i+1, college['id'], schools[i]['school'], schools[i]['link']))
+        return render_template("course_profile.html",
+                               course=course,
+                               taken=taken,
+                               taking=taking,
+                               reviews=reviews,
+                               reviews_for_graphs=reviews_for_graphs,
+                               wroteReview=wroteReview)
 
-    if not path.exists("models/department.db"):
-        init_db("department")
-        colleges = query_db('college', "SELECT * FROM college")
-        for college in colleges:
-            schools = query_db('school', "SELECT * FROM school WHERE college_id=?", (college['id'],))
-            for school in schools:
-                departments = scrapeDepartments(school['link'])
-                for i in range(len(departments)):
-                    modify_db('department', "INSERT INTO department (id, college_id, school_id, department, link) VALUES(?, ?, ?, ?, ?)",
-                              (i+1, college['id'], school['id'], departments[i]['department'], departments[i]['link']))
+# Handles Ajax requests and returns json
+@app.route("/course/save", methods=["POST"])
+def saveAsTaken():
+    if int(request.form.get('cancel')) == 0:
+        # Make sure to deal with users who heavily use browser's back/forward buttons
+        if not query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=?",
+                        (session['userid'], int(request.form.get('courseId')))):
+            if int(request.form.get('taking')) == 0:
+                modify_db('course_taken', "INSERT INTO CourseTaken (user_id, course_id, taken, taking) VALUES(?, ?, ?, ?)",
+                          (session['userid'], int(request.form.get('courseId')), 1, 0))
+            else:
+                modify_db('course_taken', "INSERT INTO CourseTaken (user_id, course_id, taken, taking) VALUES(?, ?, ?, ?)",
+                          (session['userid'], int(request.form.get('courseId')), 0, 1))
+        else:
+            if int(request.form.get('taking')) == 0:
+                modify_db('course_taken', "UPDATE CourseTaken SET taken=?, taking=? WHERE user_id=? AND course_id=?",
+                          (1, 0, session['userid'], int(request.form.get('courseId'))))
+            else:
+                modify_db('course_taken', "UPDATE CourseTaken SET taken=?, taking=? WHERE user_id=? AND course_id=?",
+                          (0, 1, session['userid'], int(request.form.get('courseId'))))
+    else:
+        # Make sure to deal with users who heavily use browser's back/forward buttons
+        if query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=?",
+                    (session['userid'], int(request.form.get('courseId')))):
+            if int(request.form.get('taking')) == 0:
+                modify_db('course_taken', "UPDATE CourseTaken SET taken=? WHERE user_id=? AND course_id=?",
+                          (0, session['userid'], int(request.form.get('courseId'))))
+            else:
+                modify_db('course_taken', "UPDATE CourseTaken SET taking=? WHERE user_id=? AND course_id=?",
+                          (0, session['userid'], int(request.form.get('courseId'))))
 
-    if not path.exists("models/course.db"):
-        init_db("course")
-        colleges = query_db('college', "SELECT * FROM college")
-        for college in colleges:
-            schools = query_db('school', "SELECT * FROM school WHERE college_id=?", (college['id'],))
-            for school in schools:
-                departments = query_db('department', "SELECT * FROM department WHERE college_id=? AND school_id=?",
-                                       (college['id'], school['id']))
-                for department in departments:
-                    courses = scrapeCourses(department['link'])
-                    for i in range(len(courses)):
-                        modify_db('course', "INSERT INTO course (id, college_id, school_id, department_id, course, link, description) \
-                                  VALUES(?, ?, ?, ?, ?, ?, ?)",
-                                  (i+1, college['id'], school['id'], department['id'],
-                                  courses[i]['course'], courses[i]['link'], 'N/A'))
+            courseUpdated = query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=?",
+                                     (session['userid'], int(request.form.get('courseId'))), True)
 
+            # If both are set to 0, delete data from DB
+            if courseUpdated['taken'] == 0 and courseUpdated['taking'] == 0:
+                modify_db('course_taken', "DELETE FROM CourseTaken WHERE user_id=? AND course_id=?",
+                          (session['userid'], int(request.form.get('courseId'))))
+
+    return json.dumps({'cancel': request.form.get('cancel'), 'taking': request.form.get('taking')})
+
+# Course review page
+@app.route("/write_review/", methods=["GET", "POST"])
+def writeCourseReview():
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        if request.method == 'GET':
+            course = query_db('course', "SELECT * FROM course WHERE id=?", (request.args.get('courseid'),), True)
+            if request.args.get('wroteReview'):
+                review = query_db('course_review', "SELECT * FROM CourseReview WHERE user_id=? AND course_id=?",
+                                  (session['userid'], request.args.get('courseid')), True)
+                return render_template("edit_course_review.html", course=course, review=review)
+            else:
+                return render_template("edit_course_review.html", course=course, review=None)
+        elif request.method == 'POST':
+            rating     = int(request.form.get("rating"))
+            difficulty = int(request.form.get("difficulty"))
+            term       = request.form.get("term").upper()
+            professor  = request.form.get("professor").upper()
+            comment    = request.form.get("comment") if request.form.get("comment") else None
+            review = query_db('course_review', "SELECT * FROM CourseReview WHERE user_id=? AND course_id=?",
+                              (session['userid'], request.args.get('courseid')), True)
+            # If updating stale review
+            if review:
+                modify_db('course_review', "UPDATE CourseReview \
+                           SET rating=?, difficulty=?, term=?, professor=?, comment=? \
+                           WHERE user_id=? AND course_id=?",
+                           (rating, difficulty, term, professor, comment, session['userid'], request.args.get('courseid')))
+
+                flash(u"Your review has been updated successfully.", 'info')
+
+            # If submitting new review
+            else:
+                modify_db('course_review', "INSERT INTO CourseReview \
+                           (user_id, course_id, rating, difficulty, term, professor, comment) \
+                           VALUES(?, ?, ?, ?, ?, ?, ?)",
+                           (session['userid'], request.args.get('courseid'), rating, difficulty, term, professor, comment))
+
+                flash(u"Your review has been submitted successfully.", 'info')
+
+            courseinfo = query_db('course', "SELECT * FROM Course WHERE id=?", (request.args.get('courseid'),), True)
+            return redirect(url_for('viewCourse', collegeid=courseinfo['college_id'],
+                                                  schoolid=courseinfo['school_id'],
+                                                  departmentid=courseinfo['department_id'],
+                                                  courseid=courseinfo['id']))
+
+# Necessary to make Ajax work correctly
+@app.after_request
+def after_request(response):
+  response.headers.add('Access-Control-Allow-Origin', '*')
+  response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+  response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+  return response
+
+# Driver
 if __name__ == '__main__':
     app.secret_key = SECRET_KEY
     app.run()

@@ -1,8 +1,7 @@
 CREATE TABLE Department (
-  id         INTEGER,
+  id         INTEGER PRIMARY KEY,
   college_id INTEGER,
   school_id  INTEGER,
-  department VARCHAR(255),
-  link       TEXT,
-  PRIMARY KEY(id, college_id, school_id)
+  name       VARCHAR(255),
+  link       TEXT
 );

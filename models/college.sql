@@ -1,5 +1,5 @@
 CREATE TABLE College (
-  id      INTEGER PRIMARY KEY,
-  college VARCHAR(255) UNIQUE,
-  link    TEXT UNIQUE
+  id   INTEGER PRIMARY KEY,
+  name VARCHAR(255) UNIQUE,
+  link TEXT UNIQUE
 );

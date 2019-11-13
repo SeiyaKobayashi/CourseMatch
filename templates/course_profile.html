@@ -1,30 +1,305 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <!-- breadcrumb -->
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{{url_for('index_colleges')}}">Colleges</a></li>
-      <li class="breadcrumb-item"><a href="{{url_for('index_schools', collegeid=course['college_id'])}}">Schools</a></li>
-      <li class="breadcrumb-item">
-          <a href="{{url_for('index_departments', collegeid=course['college_id'], schoolid=course['school_id'])}}">Departments</a>
-      </li>
-      <li class="breadcrumb-item">
-          <a href="{{url_for('index_courses', collegeid=course['college_id'], schoolid=course['school_id'], departmentid=course['department_id'])}}">Courses</a>
-      </li>
-      <li class="breadcrumb-item active">{{course['course']}}</li>
-    </ol>
-    <!-- breadcrumb end -->
     <div class="row justify-content-center mt-5">
-        <div class="col-8 text-center">
-            <h2>{{course['course']}}</h2>
+        <div class="col-12 text-center mb-3">
+            <h2>{{course['name']}}</h2>
             <a href="{{course['link']}}" target="_blank" class="pt-3">Course Link</a>
-            <h4 class="pt-4">Course Description</h4>
-            <p>{{course['description']}}</p>
         </div>
+        <div class="col-12 text-center mb-1">
+            <p>Click the buttons below to indicate whether you're taking this course this term or you've taken it bofore.</p>
+        </div>
+        {% if not taking %}
+            <div class="col-12 text-center mb-3">
+                <button id="btn-not-taking" class="btn btn-secondary" onclick="save(0, 1)">Not Taking This Term</button>
+            </div>
+        {% else %}
+            <div class="col-12 text-center mb-3">
+                <button id="btn-taking" class="btn btn-success" onclick="save(1, 1)">Taking This Term</button>
+            </div>
+        {% endif %}
+        {% if not taken %}
+            <div class="col-12 text-center mb-3">
+                <button id="btn-not-taken" class="btn btn-secondary" onclick="save(0)">Not Taken Before</button>
+            </div>
+            {% if wroteReview %}
+                <div id="btn-review" class="col-12 text-center" style="display: none;">
+                    <a href="{{url_for('writeCourseReview', courseid=course['id'], wroteReview=True)}}" class="btn btn-primary">
+                        Edit Your Review
+                    </a>
+                </div>
+            {% else %}
+                <div id="btn-review" class="col-12 text-center" style="display: none;">
+                    <a href="{{url_for('writeCourseReview', courseid=course['id'], wroteReview=False)}}" class="btn btn-primary">
+                        Write Review
+                    </a>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="col-12 text-center mb-3">
+                <button id="btn-already-taken" class="btn btn-success" onclick="save(1)">Already Taken</button>
+            </div>
+            {% if wroteReview %}
+                <div id="btn-review" class="col-12 text-center">
+                    <a href="{{url_for('writeCourseReview', courseid=course['id'], wroteReview=True)}}" class="btn btn-primary">
+                        Edit Your Review
+                    </a>
+                </div>
+            {% else %}
+                <div id="btn-review" class="col-12 text-center">
+                    <a href="{{url_for('writeCourseReview', courseid=course['id'], wroteReview=False)}}" class="btn btn-primary">
+                        Write Review
+                    </a>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    <div class="row justify-content-center mt-5">
+        <div class="col-12 text-center mb-2">
+            <h3>Course Reviews</h3>
+        </div>
+        {% if reviews|length == 0  %}
+            No one has written review for this course yet.
+        {% else %}
+            <div class="col-12 text-center mb-3">
+                <div class="row justify-content-center">
+                    <div class="col-5 text-center">
+                        <canvas id="ratingChart"></canvas>
+                    </div>
+                    <div class="col-5 text-center">
+                        <canvas id="difficultyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-8 mb-3">
+                <div class="row justify-content-left">
+                {% for i in range(reviews|length) %}
+                  <div class="col-sm-6 mb-4">
+                    <div class="card">
+                      <h5 class="card-header">{{reviews[i]['user_id']}}</h5>
+                      <div class="card-body">
+                        <div class="row justify-content-center">
+                            <div class="col-sm-6">
+                                <p class="card-text"><strong>Rating:</strong> {{reviews[i]['rating']}}</p>
+                            </div>
+                            <div class="col-sm-6">
+                                <p class="card-text"><strong>Difficulty:</strong> {{reviews[i]['difficulty']}}</p>
+                            </div>
+                            <div class="col-sm-12">
+                                <p class="card-text"><strong>Term:</strong> {{reviews[i]['term']}}</p>
+                            </div>
+                            <div class="col-sm-12">
+                                <p class="card-text"><strong>Professor:</strong> {{reviews[i]['professor']}}</p>
+                            </div>
+                        </div>
+                        <a id="btn-seeMore-{{i}}" class="btn btn-primary mt-3" data-toggle="collapse" href="#reviewDetails-{{i}}"
+                           role="button" aria-expanded="false" aria-controls="reviewDetails-{{i}}"
+                           onclick="this.style.display='none'">
+                            See More
+                        </a>
+                        <div id="reviewDetails-{{i}}" class="col-sm-12 collapse pl-0">
+                            <div class="card-text">
+                                <p class="mb-0"><strong>Comment:</strong></p>
+                                {% if reviews[i]['comment'] != 'None' %}
+                                    <p class="mb-0">{{reviews[i]['comment']}}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+                </div>
+            </div>
+        {% endif %}
     </div>
     <div class="row text-center mt-4 mb-5">
         <div class="col">
             <a href="{{url_for('profile', userid=session['userid'])}}">Back to MyPage</a>
         </div>
     </div>
+
+    <script>
+        function save(cancel, taking=0) {
+            var courseId = getQueryString('courseid');
+            $.ajax({
+                url: "/course/save",
+                type: "POST",
+                dataType: 'json',
+                data: {
+                    "courseId": courseId,
+                    "cancel": cancel,
+                    "taking": taking,
+                },
+                traditional: true,
+            })
+            .done( (data) => {
+                if (data['cancel'] == 0 && data['taking'] == 0) {
+                    // Status should be either `taken` or `taking`, not both
+                    if (document.getElementById('btn-taking')) {
+                        var btn_taking = document.getElementById('btn-taking');
+                        btn_taking.innerText = 'Not Taking This Term';
+                        btn_taking.setAttribute('id', 'btn-not-taking');
+                        btn_taking.setAttribute('class', 'btn btn-secondary');
+                        btn_taking.setAttribute('onclick', 'save(0, 1)');
+                    }
+                    var btn_taken = document.getElementById('btn-not-taken');
+                    btn_taken.innerText = 'Already Taken';
+                    btn_taken.setAttribute('id', 'btn-already-taken');
+                    btn_taken.setAttribute('class', 'btn btn-success');
+                    btn_taken.setAttribute('onclick', 'save(1)');
+                    // `Write Review` button should also be visible to user
+                    document.getElementById("btn-review").style.display = "block";
+                } else if (data['cancel'] == 0 && data['taking'] == 1) {
+                    // Status should be either `taken` or `taking`, not both
+                    if (document.getElementById('btn-already-taken')) {
+                        var btn_taken = document.getElementById('btn-already-taken');
+                        btn_taken.innerText = 'Not Taken Before';
+                        btn_taken.setAttribute('id', 'btn-not-taken');
+                        btn_taken.setAttribute('class', 'btn btn-secondary');
+                        btn_taken.setAttribute('onclick', 'save(0)');
+                    }
+                    var btn_taking = document.getElementById('btn-not-taking');
+                    btn_taking.innerText = 'Taking This Term';
+                    btn_taking.setAttribute('id', 'btn-taking');
+                    btn_taking.setAttribute('class', 'btn btn-success');
+                    btn_taking.setAttribute('onclick', 'save(1, 1)');
+                    // `Write Review` button should be invisible to user
+                    document.getElementById("btn-review").style.display = "none";
+                } else if (data['cancel'] == 1 && data['taking'] == 0) {
+                    var btn = document.getElementById('btn-already-taken');
+                    btn.innerText = 'Not Taken Before';
+                    btn.setAttribute('id', 'btn-not-taken');
+                    btn.setAttribute('class', 'btn btn-secondary');
+                    btn.setAttribute('onclick', 'save(0)');
+                    // `Write Review` button should be invisible to user
+                    document.getElementById("btn-review").style.display = "none";
+                } else {
+                    var btn = document.getElementById('btn-taking');
+                    btn.innerText = 'Not Taking This Term';
+                    btn.setAttribute('id', 'btn-not-taking');
+                    btn.setAttribute('class', 'btn btn-secondary');
+                    btn.setAttribute('onclick', 'save(0, 1)');
+                }
+            });
+        };
+
+        // Function to get values from query string
+        var getQueryString = function (field, url) {
+        	var href = url ? url : window.location.href;
+        	var reg = new RegExp( '[?&]' + field + '=([^&#]*)', 'i' );
+        	var string = reg.exec(href);
+        	return string ? string[1] : null;
+        };
+
+        // Plot graphs for rating and difficulty using Chart.js
+        var reviews = {{ reviews_for_graphs | tojson }};
+
+        // Rating graph
+        var ctx_rating = document.getElementById("ratingChart");
+        var data_rating_raw = {'1': 0, '2': 0, '3': 0, '4': 0,　'5': 0}
+        for (let i = 0; i < reviews.length; i++) {
+            switch (reviews[i]['rating']) {
+                case 1:
+                    data_rating_raw['1']++;
+                    break;
+                case 2:
+                    data_rating_raw['2']++;
+                    break;
+                case 3:
+                    data_rating_raw['3']++;
+                    break;
+                case 4:
+                    data_rating_raw['4']++;
+                    break;
+                case 5:
+                    data_rating_raw['5']++;
+                    break;
+            }
+        }
+        var data_rating = {
+            labels: ['1', '2', '3', '4', '5'],
+            datasets: [
+              {
+                data: [data_rating_raw['1'], data_rating_raw['2'], data_rating_raw['3'], data_rating_raw['4'], data_rating_raw['5']],
+                backgroundColor: ['rgba(177, 181, 175, 0.6)',
+                                  'rgba(174, 196, 160, 0.6)',
+                                  'rgba(170, 212, 144, 0.6)',
+                                  'rgba(167, 227, 129, 0.6)',
+                                  'rgba(163, 242, 114, 0.6)'],
+                borderColor: 'rgba(0, 0, 0, 0)',
+                borderWidth: 2
+              },
+            ]
+        };
+        var myChart_rating = new Chart(ctx_rating, {
+            type: 'pie',
+            data: data_rating,
+            options: {
+              responsive: true,
+              title: {
+                display: true,
+                text: 'Overall Rating',
+                fontSize: 15
+              },
+              legend: {
+                position: 'top'
+              }
+            }
+        });
+
+        // Difficulty graph
+        var ctx_difficulty = document.getElementById("difficultyChart");
+        var data_difficulty_raw = {'1': 0, '2': 0, '3': 0, '4': 0,　'5': 0}
+        for (let i = 0; i < reviews.length; i++) {
+            switch (reviews[i]['difficulty']) {
+                case 1:
+                    data_difficulty_raw['1']++;
+                    break;
+                case 2:
+                    data_difficulty_raw['2']++;
+                    break;
+                case 3:
+                    data_difficulty_raw['3']++;
+                    break;
+                case 4:
+                    data_difficulty_raw['4']++;
+                    break;
+                case 5:
+                    data_difficulty_raw['5']++;
+                    break;
+            }
+        }
+        var data_difficulty = {
+            labels: ['1', '2', '3', '4', '5'],
+            datasets: [
+              {
+                data: [data_difficulty_raw['1'], data_difficulty_raw['2'], data_difficulty_raw['3'], data_difficulty_raw['4'], data_difficulty_raw['5']],
+                backgroundColor: ['rgba(129, 240, 60, 0.6)',
+                                  'rgba(134, 219, 81, 0.6)',
+                                  'rgba(148, 156, 144, 0.6)',
+                                  'rgba(219, 81, 81, 0.6)',
+                                  'rgba(240, 60, 60, 0.6)'],
+                borderColor: 'rgba(0, 0, 0, 0)',
+                borderWidth: 2
+              },
+            ]
+        };
+        var myChart_difficulty = new Chart(ctx_difficulty, {
+            type: 'pie',
+            data: data_difficulty,
+            options: {
+              responsive: true,
+              title: {
+                display: true,
+                text: 'Difficulty',
+                fontSize: 15
+              },
+              legend: {
+                position: 'top'
+              }
+            }
+        });
+    </script>
+
 {% endblock %}

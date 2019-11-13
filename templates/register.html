@@ -31,10 +31,10 @@
         <div class="form-group row justify-content-center pt-2">
             <label for="inputCollege" class="col-sm-2 col-form-label">College <font color="red">*</font></label>
             <div class="col-sm-6">
-                <select class="form-control" id="inputCollege" name="college" required>
-                    <option disabled>PLEASE SELECT YOUR COLLEGE/UNIVERSITY</option>
+                <select class="form-control" id="inputCollege" name="college">
+                    <option selected disabled>PLEASE SELECT YOUR COLLEGE/UNIVERSITY</option>
                     {% for college in colleges %}
-                        <option value="{{college['college']}}">{{college['college']}}</option>
+                        <option value="{{college['id']}}">{{college['name']}}</option>
                     {% endfor %}
                 </select>
             </div>

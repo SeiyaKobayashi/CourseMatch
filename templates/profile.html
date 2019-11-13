@@ -21,7 +21,7 @@
                     <div class="col-2 text-right">
                         <h5>Email:</h5>
                     </div>
-                    <div class="col-3">
+                    <div class="col-4">
                         <h6>{{user['email']}}</h6>
                     </div>
                 </div>
@@ -31,7 +31,7 @@
                     <div class="col-2 text-right">
                         <h5>Gender:</h5>
                     </div>
-                    <div class="col-3">
+                    <div class="col-4">
                         <h6>{{user['gender']}}</h6>
                     </div>
                 </div>
@@ -41,8 +41,8 @@
                     <div class="col-2 text-right">
                         <h5>College:</h5>
                     </div>
-                    <div class="col-3">
-                        <h6>{{user['college']}}</h6>
+                    <div class="col-4">
+                        <h6>{{college['name']}}</h6>
                     </div>
                 </div>
             </div>
@@ -51,8 +51,12 @@
                     <div class="col-2 text-right">
                         <h5>School:</h5>
                     </div>
-                    <div class="col-3">
-                        <h6>{{user['school']}}</h6>
+                    <div class="col-4">
+                        {% if school %}
+                            <h6>{{school['name']}}</h6>
+                        {% else %}
+                            <h6>{{user['school']}}</h6>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -61,7 +65,7 @@
                     <div class="col-2 text-right">
                         <h5>School Year:</h5>
                     </div>
-                    <div class="col-3">
+                    <div class="col-4">
                         <h6>{{user['year']}}</h6>
                     </div>
                 </div>
@@ -69,20 +73,64 @@
             <div class="col-12">
                 <div class="row justify-content-center align-items-center">
                     <div class="col-2 text-right">
-                        <h5>Major(s):</h5>
+                        <h5>Major#1:</h5>
                     </div>
-                    <div class="col-3">
-                        <h6>{{user['major']}}</h6>
+                    <div class="col-4">
+                        {% if major_1 %}
+                            <h6>{{major_1['name']}}</h6>
+                        {% elif user['major_1'] == 0 %}
+                            <h6>Undeclared</h6>
+                        {% else %}
+                            <h6>{{user['major_1']}}</h6>
+                        {% endif %}
                     </div>
                 </div>
             </div>
             <div class="col-12">
                 <div class="row justify-content-center align-items-center">
                     <div class="col-2 text-right">
-                        <h5>Minor(s):</h5>
+                        <h5>Major#2:</h5>
                     </div>
-                    <div class="col-3">
-                        <h6>{{user['minor']}}</h6>
+                    <div class="col-4">
+                        {% if major_2 %}
+                            <h6>{{major_2['name']}}</h6>
+                        {% elif user['major_2'] == 0 %}
+                            <h6>Undeclared</h6>
+                        {% else %}
+                            <h6>{{user['major_2']}}</h6>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Minor#1:</h5>
+                    </div>
+                    <div class="col-4">
+                        {% if minor_1 %}
+                            <h6>{{minor_1['name']}}</h6>
+                        {% elif user['minor_1'] == 0 %}
+                            <h6>Undeclared</h6>
+                        {% else %}
+                            <h6>{{user['minor_1']}}</h6>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Minor#2:</h5>
+                    </div>
+                    <div class="col-4">
+                        {% if minor_2 %}
+                            <h6>{{minor_2['name']}}</h6>
+                        {% elif user['minor_2'] == 0 %}
+                            <h6>Undeclared</h6>
+                        {% else %}
+                            <h6>{{user['minor_2']}}</h6>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -91,8 +139,44 @@
                     <div class="col-2 text-right">
                         <h5>Profile:</h5>
                     </div>
-                    <div class="col-3">
-                        <h6>{{user['profile']}}</h6>
+                    <div class="col-4">
+                        <a>{{user['profile']}}</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Courses Taken in the Previous Terms:</h5>
+                    </div>
+                    <div class="col-4">
+                        {% for course in courses_taken %}
+                            <a href="{{url_for('viewCourse', collegeid=course['college_id'],
+                                                             schoolid=course['school_id'],
+                                                             departmentid=course['department_id'],
+                                                             courseid=course['id'])}}">
+                                {{course['name']}}
+                            </a>
+                            <br>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="row justify-content-center align-items-center">
+                    <div class="col-2 text-right">
+                        <h5>Courses Taking in This Term:</h5>
+                    </div>
+                    <div class="col-4">
+                        {% for course in courses_taking %}
+                            <a href="{{url_for('viewCourse', collegeid=course['college_id'],
+                                                             schoolid=course['school_id'],
+                                                             departmentid=course['department_id'],
+                                                             courseid=course['id'])}}">
+                                {{course['name']}}
+                            </a>
+                            <br>
+                        {% endfor %}
                     </div>
                 </div>
             </div>

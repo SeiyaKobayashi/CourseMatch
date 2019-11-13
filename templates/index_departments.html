@@ -1,13 +1,6 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <!-- breadcrumb -->
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{{url_for('index_colleges')}}">Colleges</a></li>
-      <li class="breadcrumb-item"><a href="{{url_for('index_schools', collegeid=departments[0][0]['college_id'])}}">Schools</a></li>
-      <li class="breadcrumb-item active">Departments</li>
-    </ol>
-    <!-- breadcrumb end -->
     <div class="row justify-content-center mt-4">
         <div class="col-8 text-center">
             <h2 class="pb-3">Majors/Minors</h2>
@@ -17,7 +10,7 @@
                         <a href="{{url_for('index_courses', collegeid=department[0]['college_id'],
                                                             schoolid=department[0]['school_id'],
                                                             departmentid=department[0]['id'])}}">
-                            {{department[0]['department']}}
+                            {{department[0]['name']}}
                         </a>
                         <span class="badge badge-primary badge-pill">
                             {{department[1]}}
