@@ -1,7 +1,9 @@
 from flask import Flask, g
+from flask_socketio import SocketIO
 import sqlite3
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 def init_db(DATABASE):
     with app.app_context():

@@ -1,26 +1,26 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <div class="row justify-content-center mt-5">
+    <div class="row justify-content-center mt-5 no-gutters">
         <h1>Edit Profile</h1>
     </div>
-    <div class="row justify-content-center mt-2">
+    <div class="row justify-content-center mt-2 no-gutters">
         <i>Fields with asterisks(<font color="red">*</font>) are required.</i>
     </div>
     <form action="{{url_for('update', userid=session['userid'])}}" method="post">
-        <div class="form-group row justify-content-center pt-4">
+        <div class="form-group row justify-content-center pt-4 no-gutters">
             <label for="inputName" class="col-sm-2 col-form-label">Name <font color="red">*</font></label>
             <div class="col-sm-6">
                 <input name="name" type="text" placeholder="Name" value="{{user['name']}}" class="form-control" id="inputName" required>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputEmail" class="col-sm-2 col-form-label">Email <font color="red">*</font></label>
             <div class="col-sm-6">
                 <input name="email" type="email" placeholder="Email" value="{{user['email']}}" class="form-control" id="inputEmail" required>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label class="col-sm-2 col-form-label">Gender</label>
             <div class="col-sm-6">
                 <div class="form-check">
@@ -49,7 +49,7 @@
                 </div>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputCollege" class="col-sm-2 col-form-label">College <font color="red">*</font></label>
             <div class="col-sm-6">
                 <select class="form-control" id="inputCollege" name="college" required>
@@ -64,7 +64,7 @@
                 </select>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputSchool" class="col-sm-2 col-form-label">School</label>
             <div class="col-sm-6">
                 <select class="form-control" id="inputSchool" name="school" required>
@@ -79,7 +79,7 @@
                 </select>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label class="col-sm-2 col-form-label">School Year</label>
             <div class="col-sm-6">
                 <div class="form-check">
@@ -116,7 +116,7 @@
                 </div>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputMajor_1" class="col-sm-2 col-form-label">Major#1</label>
             <div class="col-sm-6">
                 <select class="form-control" id="inputMajor_1" name="major_1">
@@ -144,7 +144,7 @@
                 </select>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputMajor_2" class="col-sm-2 col-form-label">Major#2</label>
             <div class="col-sm-6">
                 <select class="form-control" id="inputMajor_2" name="major_2">
@@ -172,7 +172,7 @@
                 </select>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputMinor_1" class="col-sm-2 col-form-label">Minor#1</label>
             <div class="col-sm-6">
                 <select class="form-control" id="inputMinor_1" name="minor_1">
@@ -200,7 +200,7 @@
                 </select>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputMinor_2" class="col-sm-2 col-form-label">Minor#2</label>
             <div class="col-sm-6">
                 <select class="form-control" id="inputMinor_2" name="major_2">
@@ -228,7 +228,7 @@
                 </select>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputProfile" class="col-sm-2 col-form-label">Profile</label>
             <div class="col-sm-6">
                 {% if user['profile'] != None %}
@@ -240,12 +240,12 @@
                 {% endif %}
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-4">
+        <div class="form-group row justify-content-center pt-4 no-gutters">
             <div class="col-sm-12 text-center">
                 <h5>Please enter your password to save changes.</h5>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputPasswordConfirm" class="col-sm-3 col-form-label">
                 Password <font color="red">*</font> (<a href="{{url_for('change_password', userid=session['userid'])}}">Forgot your password?</a>)
             </label>
@@ -253,11 +253,11 @@
                 <input name="password" type="password" placeholder="Password" class="form-control" id="inputPassword" required>
             </div>
         </div>
-        <div class="row justify-content-center pt-3">
+        <div class="row justify-content-center pt-3 no-gutters">
             <button type="submit" class="btn btn-primary">Save</button>
         </div>
     </form>
-    <div class="row text-center mt-4 mb-5">
+    <div class="row text-center mt-4 mb-5 no-gutters">
         <div class="col">
             <a href="{{url_for('profile', userid=session['userid'])}}">Back to MyPage</a>
         </div>

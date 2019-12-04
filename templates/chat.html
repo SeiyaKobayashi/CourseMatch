@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    <div id="chatScreenWrapper" class="row justify-content-center" style="min-width: 350px;">
+      <div class="col-3 overflow-auto border mt-3" style="min-height: 500px; word-wrap: break-word;">
+          <ul id="chatList" class="list-group mt-3">
+            <li class="list-group-item py-1">
+                Alice
+            </li>
+            <li class="list-group-item py-1">
+                Bob
+            </li>
+          </ul>
+      </div>
+      <div class="col-8 overflow-auto border mt-3" style="min-height: 500px; word-wrap: break-word;">
+          <ul id="chatScreen" class="list-group mt-3">
+            <li class="list-group-item rounded-lg align-self-start py-1 mb-2" style="max-width: 50%;">
+                Hello
+            </li>
+            <li class="list-group-item rounded-lg active align-self-end py-1 mb-2" style="max-width: 50%;">
+                Hey
+            </li>
+            <li class="list-group-item rounded-lg align-self-start text-right py-1 mb-2" style="max-width: 50%;">
+                Yo
+            </li>
+          </ul>
+      </div>
+      <div class="col-8 mt-3 mb-3">
+          <div class="row justify-content-between">
+            <input id="textMsg" class="col-9 align-self-start py-1 ml-2" type="text">
+            <button class="col-2 align-self-end btn-primary rounded-lg py-1 mr-2" type="submit" onclick="sendMsg()">Send</button>
+          </div>
+      </div>
+    </div>
+
+    <script>
+        const socket = io('/chat');
+        socket.on('showMsg', function(msg) {
+          var msgWrapper = document.createElement('li');
+          msgWrapper.setAttribute("class", "list-group-item rounded-lg active align-self-end py-1 mb-2");
+          msgWrapper.setAttribute("style", "max-width: 50%;");
+          msgWrapper.innerText = msg;
+          document.getElementById("chatScreen").appendChild(msgWrapper);
+        });
+        function sendMsg() {
+          var d = new Date();
+          var timestamp = d.getFullYear().toString()+"/"+
+                          ((d.getMonth()+1).toString().length==2?(d.getMonth()+1).toString():"0"+(d.getMonth()+1).toString())+"/"+
+                          (d.getDate().toString().length==2?d.getDate().toString():"0"+d.getDate().toString())+" "+
+                          (d.getHours().toString().length==2?d.getHours().toString():"0"+d.getHours().toString())+":"+
+                          ((parseInt(d.getMinutes())).toString().length==2?(parseInt(d.getMinutes())).toString():"0"+(parseInt(d.getMinutes())).toString())+":"+
+                          ((parseInt(d.getSeconds())).toString().length==2?(parseInt(d.getSeconds())).toString():"0"+(parseInt(d.getSeconds())).toString());
+          socket.emit('reflectMsg', {'userid': 1, 'roomid': 1, 'timestamp': timestamp, 'msg': document.getElementById("textMsg").value});
+        }
+        // function showChatScreen() {
+        //   var chatScreen = document.getElementById("chatScreenWrapper");
+        //   if (chatScreen.style.display === "none") {
+        //     chatScreen.style.display = "block";
+        //   } else {
+        //     chatScreen.style.display = "none";
+        //   }
+        // }
+    </script>
+{% endblock %}

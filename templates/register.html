@@ -1,14 +1,14 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <div class="row justify-content-center mt-4">
+    <div class="row justify-content-center mt-4 no-gutters">
         <h1>Register</h1>
     </div>
-    <div class="row justify-content-center mt-2">
+    <div class="row justify-content-center mt-2 no-gutters">
         <i>Fields with asterisks(<font color="red">*</font>) are required.</i>
     </div>
     <form action="{{url_for('register')}}" method="post">
-        <div class="form-group row justify-content-center pt-3">
+        <div class="form-group row justify-content-center pt-3 no-gutters">
             <label for="inputName" class="col-sm-2 col-form-label">Name <font color="red">*</font></label>
             <div class="col-sm-6">
                 {% if session['name'] %}
@@ -18,7 +18,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputEmail" class="col-sm-2 col-form-label">Email <font color="red">*</font></label>
             <div class="col-sm-6">
                 {% if session['email'] %}
@@ -28,7 +28,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputCollege" class="col-sm-2 col-form-label">College <font color="red">*</font></label>
             <div class="col-sm-6">
                 <select class="form-control" id="inputCollege" name="college">
@@ -39,7 +39,7 @@
                 </select>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label class="col-form-label col-sm-2 pt-0">Gender</label>
             <div class="col-sm-6">
                 <div class="form-check">
@@ -68,23 +68,23 @@
                 </div>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputPassword" class="col-sm-2 col-form-label">Password <font color="red">*</font></label>
             <div class="col-sm-6">
                 <input name="password" type="password" placeholder="Password" class="form-control" id="inputPassword" required>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputPasswordConfirm" class="col-sm-2 col-form-label">Password (Confirm) <font color="red">*</font></label>
             <div class="col-sm-6">
                 <input name="passwordconfirmation" type="password" placeholder="Password (Confirmation)" class="form-control" id="inputPasswordConfirm" required>
             </div>
         </div>
-        <div class="row justify-content-center pt-3">
+        <div class="row justify-content-center pt-3 no-gutters">
             <button type="submit" class="btn btn-primary">Register</button>
         </div>
     </form>
-    <div class="row text-center mt-4 mb-5">
+    <div class="row text-center mt-4 mb-5 no-gutters">
         <div class="col">
             <a href="{{url_for('login')}}">Already have an account? Login from Here!</a>
         </div>

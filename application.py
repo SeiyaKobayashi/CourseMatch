@@ -1,5 +1,6 @@
 from flask import request, render_template, redirect, url_for, session, flash
-from init_db import app, get_db, modify_db, query_db
+from flask_socketio import send, emit, join_room, leave_room
+from init_db import app, socketio, get_db, modify_db, query_db
 from config import SECRET_KEY, emailRegEx, pwRegEx
 import re
 import json
@@ -489,36 +490,58 @@ def writeCourseReview():
             else:
                 return render_template("edit_course_review.html", course=course, review=None)
         elif request.method == 'POST':
-            rating     = int(request.form.get("rating"))
-            difficulty = int(request.form.get("difficulty"))
-            term       = request.form.get("term").upper()
-            professor  = request.form.get("professor").upper()
-            comment    = request.form.get("comment") if request.form.get("comment") else None
-            review = query_db('course_review', "SELECT * FROM CourseReview WHERE user_id=? AND course_id=?",
-                              (session['userid'], request.args.get('courseid')), True)
-            # If updating stale review
-            if review:
-                modify_db('course_review', "UPDATE CourseReview \
-                           SET rating=?, difficulty=?, term=?, professor=?, comment=? \
-                           WHERE user_id=? AND course_id=?",
-                           (rating, difficulty, term, professor, comment, session['userid'], request.args.get('courseid')))
-
-                flash(u"Your review has been updated successfully.", 'info')
-
-            # If submitting new review
+            course = query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=?",
+                              (session['userid'], int(request.args.get('courseid'))))
+            # If user tries to write a review for any course not yet taken by directly modifying query strings
+            if not course or course['taken'] == False:
+                courseinfo = query_db('course', "SELECT * FROM Course WHERE id=?", (request.args.get('courseid'),), True)
+                flash(u"You cannot write a review for any course not yet taken.", 'warning')
+                return redirect(url_for('viewCourse', collegeid=courseinfo['college_id'],
+                                                      schoolid=courseinfo['school_id'],
+                                                      departmentid=courseinfo['department_id'],
+                                                      courseid=courseinfo['id']))
             else:
-                modify_db('course_review', "INSERT INTO CourseReview \
-                           (user_id, course_id, rating, difficulty, term, professor, comment) \
-                           VALUES(?, ?, ?, ?, ?, ?, ?)",
-                           (session['userid'], request.args.get('courseid'), rating, difficulty, term, professor, comment))
+                rating     = int(request.form.get("rating"))
+                difficulty = int(request.form.get("difficulty"))
+                term       = request.form.get("term").upper()
+                professor  = request.form.get("professor").upper()
+                comment    = request.form.get("comment") if request.form.get("comment") else None
+                review = query_db('course_review', "SELECT * FROM CourseReview WHERE user_id=? AND course_id=?",
+                                  (session['userid'], request.args.get('courseid')), True)
+                # If updating stale review
+                if review:
+                    modify_db('course_review', "UPDATE CourseReview \
+                               SET rating=?, difficulty=?, term=?, professor=?, comment=? \
+                               WHERE user_id=? AND course_id=?",
+                               (rating, difficulty, term, professor, comment, session['userid'], request.args.get('courseid')))
 
-                flash(u"Your review has been submitted successfully.", 'info')
+                    flash(u"Your review has been updated successfully.", 'info')
 
-            courseinfo = query_db('course', "SELECT * FROM Course WHERE id=?", (request.args.get('courseid'),), True)
-            return redirect(url_for('viewCourse', collegeid=courseinfo['college_id'],
-                                                  schoolid=courseinfo['school_id'],
-                                                  departmentid=courseinfo['department_id'],
-                                                  courseid=courseinfo['id']))
+                # If submitting new review
+                else:
+                    modify_db('course_review', "INSERT INTO CourseReview \
+                               (user_id, course_id, rating, difficulty, term, professor, comment) \
+                               VALUES(?, ?, ?, ?, ?, ?, ?)",
+                               (session['userid'], request.args.get('courseid'), rating, difficulty, term, professor, comment))
+
+                    flash(u"Your review has been submitted successfully.", 'info')
+
+                courseinfo = query_db('course', "SELECT * FROM Course WHERE id=?", (request.args.get('courseid'),), True)
+                return redirect(url_for('viewCourse', collegeid=courseinfo['college_id'],
+                                                      schoolid=courseinfo['school_id'],
+                                                      departmentid=courseinfo['department_id'],
+                                                      courseid=courseinfo['id']))
+
+@app.route("/<int:userid>/chat", methods=["GET", "POST"])
+def chat(userid):
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        return render_template("chat.html")
 
 # Necessary to make Ajax work correctly
 @app.after_request
@@ -531,4 +554,4 @@ def after_request(response):
 # Driver
 if __name__ == '__main__':
     app.secret_key = SECRET_KEY
-    app.run()
+    socketio.run(app, debug="True")

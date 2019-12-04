@@ -1,20 +1,20 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <div class="row justify-content-center mt-5">
+    <div class="row justify-content-center mt-5 no-gutters">
         <h1>Write Course Review</h1>
     </div>
-    <div class="row justify-content-center mt-2">
+    <div class="row justify-content-center mt-2 no-gutters">
         <i>Fields with asterisks(<font color="red">*</font>) are required.</i>
     </div>
     <form action="{{url_for('writeCourseReview', userid=session['userid'], courseid=course['id'])}}" method="post">
-        <div class="form-group row justify-content-center pt-4">
+        <div class="form-group row justify-content-center pt-4 no-gutters">
             <label for="inputCourseName" class="col-sm-2 col-form-label">Course</label>
             <div class="col-sm-6">
                 <input name="courseName" type="text" value="{{course['name']}}" class="form-control" id="inputcourseName" disabled>
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputRating" class="col-sm-2 col-form-label">Overall Rating (Out of 5) <font color="red">*</font></label>
             <div class="col-sm-6">
                 {% if review %}
@@ -24,7 +24,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputDifficulty" class="col-sm-2 col-form-label">Difficulty (Out of 5; 5 means "Most Difficult") <font color="red">*</font></label>
             <div class="col-sm-6">
                 {% if review %}
@@ -34,7 +34,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-4">
+        <div class="form-group row justify-content-center pt-4 no-gutters">
             <label for="inputTerm" class="col-sm-2 col-form-label">Term <font color="red">*</font></label>
             <div class="col-sm-6">
                 {% if review %}
@@ -44,7 +44,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-4">
+        <div class="form-group row justify-content-center pt-4 no-gutters">
             <label for="inputProf" class="col-sm-2 col-form-label">Professor <font color="red">*</font></label>
             <div class="col-sm-6">
                 {% if review %}
@@ -54,7 +54,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="form-group row justify-content-center pt-2">
+        <div class="form-group row justify-content-center pt-2 no-gutters">
             <label for="inputComment" class="col-sm-2 col-form-label">Comment</label>
             <div class="col-sm-6">
                 {% if review['comment'] %}
@@ -64,7 +64,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="row justify-content-center pt-3">
+        <div class="row justify-content-center pt-3 no-gutters">
             {% if review %}
                 <button type="submit" class="btn btn-primary">Update</button>
             {% else %}
@@ -72,7 +72,7 @@
             {% endif %}
         </div>
     </form>
-    <div class="row text-center mt-4 mb-5">
+    <div class="row text-center mt-4 mb-5 no-gutters">
         <div class="col">
             <a href="{{url_for('profile', userid=session['userid'])}}">Back to MyPage</a>
         </div>
