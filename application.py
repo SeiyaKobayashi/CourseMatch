@@ -4,6 +4,7 @@ from init_db import app, socketio, get_db, modify_db, query_db
 from config import SECRET_KEY, emailRegEx, pwRegEx
 import re
 import json
+import datetime
 
 # Top page
 @app.route("/")
@@ -532,8 +533,10 @@ def writeCourseReview():
                                                       departmentid=courseinfo['department_id'],
                                                       courseid=courseinfo['id']))
 
-@app.route("/<int:userid>/chat", methods=["GET", "POST"])
-def chat(userid):
+### Messaging Feature (not yet completed) ###
+
+@app.route("/<int:userid>/messages/")
+def showMessagesAll(userid):
     # If not logged in
     if 'userid' not in session:
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
@@ -541,7 +544,65 @@ def chat(userid):
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
-        return render_template("chat.html")
+        # Should be modified later; add friend feature and show only those who have been added as friends
+        friends = query_db('user', "SELECT * FROM User")
+        # rooms   = query_db('room', "SELECT * FROM Room WHERE user_id=?", (session['userid'],))
+        roomid = abs(hash(datetime.datetime.now()))
+        return render_template("messages.html", friends=friends)
+
+@app.route("/<int:userid>/messages/<int:roomid>/")
+def showMessages(userid, roomid):
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        # Should be modified later; add friend feature and show only those who have been added as friends
+        friends = query_db('user', "SELECT * FROM User")
+        # rooms   = query_db('room', "SELECT * FROM Room WHERE user_id=?", (session['userid'],))
+        roomid = abs(hash(datetime.datetime.now()))
+        return render_template("messages.html", friends=friends)
+
+@socketio.on('join')
+def on_join(data):
+    userid = data['userid']
+    roomid = int(data['roomid'])
+    join_room(roomid)
+    emit('join', 'userid #' + str(userid) + ' is online.', room=roomid)
+
+@socketio.on('leave')
+def on_leave(data):
+    userid = data['userid']
+    roomid = int(data['roomid'])
+    leave_room(roomid)
+    emit('leave', 'userid #' + str(userid) + ' is offline.', room=roomid)
+
+# Store msg data in DB here
+@socketio.on('reflectMsg')
+def on_msg_sent(data):
+    userid = data['userid']
+    roomid = int(data['roomid'])
+    msg = data['msg']
+    time = str(data['timestamp'])
+    emit('showMsg', msg, room=room)
+
+@socketio.on('broadcast')
+def on_broadcast(data):
+    msg = data['msg']
+    time = str(data['timestamp'])
+    emit('showMsg', msg+' at '+time, broadcast=True)
+
+@socketio.on('connect')
+def test_connect():
+    emit('connectOk', 'You\'re online.')
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
+
+### Messaging Feature End ###
 
 # Necessary to make Ajax work correctly
 @app.after_request
@@ -554,4 +615,5 @@ def after_request(response):
 # Driver
 if __name__ == '__main__':
     app.secret_key = SECRET_KEY
+    app._static_folder = '/static'
     socketio.run(app, debug="True")

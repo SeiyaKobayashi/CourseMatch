@@ -1,5 +1,5 @@
 CREATE TABLE Room (
-  id         INTEGER PRIMARY KEY,
+  id         INTEGER,
   user_id    INTEGER,
   created_at TEXT,
   joined_at  TEXT
