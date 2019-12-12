@@ -9,6 +9,11 @@ def init_app():
         init_db("user")
         print('Done.')
 
+    if not path.exists("models/follower.db"):
+        print('Initializing "follower.db"...')
+        init_db("follower")
+        print('Done.')
+
     if not path.exists("models/room.db"):
         print('Initializing "room.db"...')
         init_db("room")

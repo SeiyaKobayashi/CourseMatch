@@ -161,8 +161,12 @@ def profile(userid):
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
+        following = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
+                                    (session['userid'], userid), True) else False
+        followed  = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
+                                    (userid, session['userid']), True) else False
         college = query_db('college', "SELECT * FROM college WHERE id = ?", (user['college'],), True)
-        school = query_db('school', "SELECT * FROM school WHERE id = ?", (user['school'],), True)
+        school  = query_db('school', "SELECT * FROM school WHERE id = ?", (user['school'],), True)
         major_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_1'],), True)
         major_2 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_2'],), True)
         minor_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['minor_1'],), True)
@@ -177,13 +181,31 @@ def profile(userid):
         courses_taking = [query_db('course', "SELECT * FROM course WHERE id = ?", (courseId,), True) for courseId in courseIds_taking]
 
         if user['id'] != session['userid']:
-            return render_template("profile.html", user=user, college=college, school=school,
-                                   major_1=major_1, major_2=major_2, minor_1=minor_1, minor_2=minor_2,
-                                   courses_taken=courses_taken, courses_taking=courses_taking, editable=False)
+            return render_template("profile.html", user=user, following=following, followed=followed,
+                                   college=college, school=school, major_1=major_1, major_2=major_2,
+                                   minor_1=minor_1, minor_2=minor_2, courses_taken=courses_taken, courses_taking=courses_taking,
+                                   editable=False)
         else:
-            return render_template("profile.html", user=user, college=college, school=school,
-                                   major_1=major_1, major_2=major_2, minor_1=minor_1, minor_2=minor_2,
-                                   courses_taken=courses_taken, courses_taking=courses_taking, editable=True)
+            return render_template("profile.html", user=user, following=following, followed=followed,
+                                   college=college, school=school, major_1=major_1, major_2=major_2,
+                                   minor_1=minor_1, minor_2=minor_2, courses_taken=courses_taken, courses_taking=courses_taking,
+                                   editable=True)
+
+@app.route("/<int:userid>/follow", methods=["POST"])
+def follow(userid):
+    modify_db('follower', "INSERT INTO Follower (user_id, following_user_id) VALUES(?, ?)",
+              (int(userid), request.form.get('following_user_id')))
+    followed = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
+                                (request.form.get('following_user_id'), session['userid']), True) else False
+    return json.dumps({'followed': followed})
+
+@app.route("/<int:userid>/unfollow", methods=["POST"])
+def unfollow(userid):
+    modify_db('follower', "DELETE FROM Follower WHERE user_id = ? AND following_user_id = ?",
+              (int(userid), request.form.get('following_user_id')))
+    followed = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
+                                (request.form.get('following_user_id'), session['userid']), True) else False
+    return json.dumps({'followed': followed})
 
 # Profile update page
 @app.route("/<int:userid>/edit", methods=["GET", "POST"])

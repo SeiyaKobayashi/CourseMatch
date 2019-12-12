@@ -4,7 +4,7 @@
     <div class="text-center">
         <div class="row mt-5 no-gutters">
             <div class="col-12 pb-3">
-                <div class="row justify-content-center align-items-center no-gutters">
+                <div id="profileTitle" class="row justify-content-center align-items-center no-gutters">
                     {% if editable %}
                         <div class="col-12">
                             <h3>Hello, {{user['name']}}!!</h3>
@@ -13,6 +13,18 @@
                         <div class="col-12">
                             <h3>{{user['name']}}</h3>
                         </div>
+                        {% if following %}
+                            <button id="btn-following" class="btn btn-success" onclick="unfollow()">Following</button>
+                        {% else %}
+                            {% if followed %}
+                                <div id="followedSign" class="col-12">
+                                    <p>This user is following you.</p>
+                                </div>
+                                <button id="btn-followback" class="btn btn-secondary" onclick="follow()">Follow Back</button>
+                            {% else %}
+                                <button id="btn-follow" class="btn btn-secondary" onclick="follow()">Follow</button>
+                            {% endif %}
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -182,4 +194,61 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function follow() {
+            $.ajax({
+                url: "/".concat({{session['userid']}}, "/follow"),
+                type: "POST",
+                dataType: 'json',
+                data: {
+                    user_id: {{session['userid']}},
+                    following_user_id: {{user['id']}}
+                }
+            }).done((res) => {
+                if (res['followed'] == true) {
+                    document.getElementById("followedSign").remove();
+                    document.getElementById("btn-followback").remove();
+                } else {
+                    document.getElementById("btn-follow").remove();
+                }
+                var btn = document.createElement('button');
+                btn.setAttribute("id", "btn-following");
+                btn.setAttribute("class", "btn btn-success");
+                btn.setAttribute("onclick", "unfollow()");
+                btn.innerText = "Following"
+                document.getElementById("profileTitle").appendChild(btn);
+            });
+        }
+
+        function unfollow() {
+            $.ajax({
+                url: "/".concat({{session['userid']}}, "/unfollow"),
+                type: "POST",
+                dataType: 'json',
+                data: {
+                    user_id: {{session['userid']}},
+                    following_user_id: {{user['id']}}
+                }
+            }).done((res) => {
+                document.getElementById("btn-following").remove();
+                var btn = document.createElement('button');
+                btn.setAttribute("class", "btn btn-secondary");
+                btn.setAttribute("onclick", "follow()");
+                if (res['followed'] == true) {
+                    var msgWrapper = document.createElement('div');
+                    msgWrapper.setAttribute("id", "followedSign");
+                    msgWrapper.setAttribute("class", "col-12");
+                    msgWrapper.innerHTML = "<p>This user is following you.</p>";
+                    document.getElementById("profileTitle").appendChild(msgWrapper);
+                    btn.setAttribute("id", "btn-followback");
+                    btn.innerText = "Follow Back";
+                } else {
+                    btn.setAttribute("id", "btn-follow");
+                    btn.innerText = "Follow";
+                }
+                document.getElementById("profileTitle").appendChild(btn);
+            });
+        }
+    </script>
 {% endblock %}
