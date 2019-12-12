@@ -2,7 +2,7 @@
 
 {% block body %}
     <div id="chatScreenWrapper" class="row justify-content-center" style="min-width: 350px;">
-      <div class="col-3 overflow-auto border mt-3" style="min-height: 500px; word-wrap: break-word;">
+      <div class="col-3 overflow-auto border mt-3" style="min-height: 500px; max-height: 500px; word-wrap: break-word;">
           <ul id="chatList" class="list-group mt-3">
               <div class="row justify-content-center mb-3">
                   <input class="col-8 py-1 mr-2" placeholder="Search friends" aria-label="Search">
@@ -10,35 +10,55 @@
               </div>
               {% if friends %}
                 {% for friend in friends %}
-                    <li class="list-group-item py-1">
-                        <a href="{{url_for('showMessages', userid=session['userid'], roomid=friend['id'])}}">{{friend['name']}}</a>
-                    </li>
+                    {% if friend['id'] != session['userid'] %}
+                        {% if friend['id'] == selectedUserID %}
+                            <li class="list-group-item active py-1">
+                                <a href="{{url_for('showMessages', userid=session['userid'], receiverid=friend['id'])}}" class="text-white">
+                                    {{friend['name']}}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="list-group-item py-1">
+                                <a href="{{url_for('showMessages', userid=session['userid'], receiverid=friend['id'])}}" class="text-dark">
+                                    {{friend['name']}}
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endif %}
                 {% endfor %}
               {% else %}
                 <p class="mt-3">
-                    No friends. Let's send friend requests first!
+                    No friends. Let's send a friend request first!
                 </p>
               {% endif %}
           </ul>
       </div>
-      <div class="col-8 overflow-auto border mt-3" style="min-height: 500px; word-wrap: break-word;">
-          {% if message %}
-              <ul id="chatScreen" class="list-group mt-3">
-                <li class="list-group-item rounded-lg align-self-start py-1 mb-2" style="max-width: 50%;">
-                    Hello
-                </li>
-                <li class="list-group-item rounded-lg active align-self-end py-1 mb-2" style="max-width: 50%;">
-                    Hey
-                </li>
-                <li class="list-group-item rounded-lg align-self-start text-right py-1 mb-2" style="max-width: 50%;">
-                    Yo
-                </li>
-              </ul>
-          {% else %}
-              <p class="mt-3">
-                  Please select the person to chat with from the left.
-              </p>
-          {% endif %}
+      <div id="chatListWrapper" class="col-8 overflow-auto border mt-3" style="min-height: 500px; max-height: 500px; word-wrap: break-word;">
+          {% if chatScreen %}
+              {% if messages %}
+                  <ul id="chatScreen" class="list-group mt-3">
+                    {% for message in messages %}
+                      {% if message['sender_id'] == session['userid'] %}
+                        <li class="list-group-item rounded-lg active align-self-end py-1 mb-2" style="max-width: 50%;">
+                          {{message['message']}}
+                        </li>
+                      {% else %}
+                        <li class="list-group-item rounded-lg align-self-start py-1 mb-2" style="max-width: 50%;">
+                          {{message['message']}}
+                        </li>
+                      {% endif %}
+                    {% endfor %}
+                  </ul>
+              {% else %}
+                  <p id="initialMsg" class="mt-3 text-center">
+                      This is the beginning of chat. Let's send a message to start chatting!
+                  </p>
+              {% endif %}
+        {% else %}
+            <p class="mt-3 text-center">
+                Please select the person to chat with from the left.
+            </p>
+        {% endif %}
       </div>
       <div class="col-8 mt-3 mb-3">
           <div class="row justify-content-between">
@@ -49,14 +69,32 @@
     </div>
 
     <script>
-        const socket = io('/chat');
-        socket.on('showMsg', function(msg) {
-          var msgWrapper = document.createElement('li');
-          msgWrapper.setAttribute("class", "list-group-item rounded-lg active align-self-end py-1 mb-2");
-          msgWrapper.setAttribute("style", "max-width: 50%;");
-          msgWrapper.innerText = msg;
-          document.getElementById("chatScreen").appendChild(msgWrapper);
+        const socket = io('');
+
+        socket.on('showMsg', function(data) {
+            var initialMsg = document.getElementById("initialMsg");
+            if (typeof(initialMsg) != 'undefined' && initialMsg != null) {
+                document.getElementById("initialMsg").style.display = "none";
+                var msgListWrapper = document.createElement('ul');
+                msgListWrapper.setAttribute("id", "chatScreen");
+                msgListWrapper.setAttribute("class", "list-group mt-3");
+                document.getElementById("chatListWrapper").appendChild(msgListWrapper);
+            }
+            if (data['sender_id'] == {{session['userid']}}) {
+                var msgWrapper = document.createElement('li');
+                msgWrapper.setAttribute("class", "list-group-item rounded-lg active align-self-end py-1 mb-2");
+                msgWrapper.setAttribute("style", "max-width: 50%;");
+                msgWrapper.innerText = data['message'];
+                document.getElementById("chatScreen").appendChild(msgWrapper);
+            } else {
+                var msgWrapper = document.createElement('li');
+                msgWrapper.setAttribute("class", "list-group-item rounded-lg align-self-start py-1 mb-2");
+                msgWrapper.setAttribute("style", "max-width: 50%;");
+                msgWrapper.innerText = data['message'];
+                document.getElementById("chatScreen").appendChild(msgWrapper);
+            }
         });
+
         function sendMsg() {
           var d = new Date();
           var timestamp = d.getFullYear().toString()+"/"+
@@ -65,19 +103,23 @@
                           (d.getHours().toString().length==2?d.getHours().toString():"0"+d.getHours().toString())+":"+
                           ((parseInt(d.getMinutes())).toString().length==2?(parseInt(d.getMinutes())).toString():"0"+(parseInt(d.getMinutes())).toString())+":"+
                           ((parseInt(d.getSeconds())).toString().length==2?(parseInt(d.getSeconds())).toString():"0"+(parseInt(d.getSeconds())).toString());
-          socket.emit('reflectMsg',
-                      {'userid': {{session['userid']}},
-                       'roomid': 1,
-                       'timestamp': timestamp,
-                       'msg': document.getElementById("message").value});
+          // If the room already exists
+          if ({{messagesDict|tojson}} != null) {
+              socket.emit('reflectMsg',
+                          {'room_id': {{messagesDict|tojson}}[0]['room_id'],
+                           'sender_id': {{session['userid']}},
+                           'message': document.getElementById("message").value,
+                           'timestamp': timestamp
+                          });
+          } else {
+              socket.emit('reflectMsg',
+                          {'sender_id': {{session['userid']}},
+                           'receiver_id': window.location.href.split('messages/')[1].slice(0, -1),
+                           'message': document.getElementById("message").value,
+                           'timestamp': timestamp
+                          });
+          }
+          document.getElementById('message').value = ''
         }
-        // function showChatScreen() {
-        //   var chatScreen = document.getElementById("chatScreenWrapper");
-        //   if (chatScreen.style.display === "none") {
-        //     chatScreen.style.display = "block";
-        //   } else {
-        //     chatScreen.style.display = "none";
-        //   }
-        // }
     </script>
 {% endblock %}

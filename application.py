@@ -541,66 +541,113 @@ def showMessagesAll(userid):
     if 'userid' not in session:
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
+    # If not valid user (when trying to see others' messages)
+    if int(userid) != session['userid']:
+        flash(u"Invalid access. You cannot see other users' message log.", 'warning')
+        return redirect(url_for("showMessagesAll", userid=session['userid']))
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
         # Should be modified later; add friend feature and show only those who have been added as friends
         friends = query_db('user', "SELECT * FROM User")
-        # rooms   = query_db('room', "SELECT * FROM Room WHERE user_id=?", (session['userid'],))
-        roomid = abs(hash(datetime.datetime.now()))
-        return render_template("messages.html", friends=friends)
+        return render_template("messages.html", friends=friends, messages=None, messagesDict=None)
 
-@app.route("/<int:userid>/messages/<int:roomid>/")
-def showMessages(userid, roomid):
+@app.route("/<int:userid>/messages/<int:receiverid>/")
+def showMessages(userid, receiverid):
     # If not logged in
     if 'userid' not in session:
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
         return redirect(url_for("login"))
+    # If not valid user (when trying to see others' messages)
+    if int(userid) != session['userid']:
+        flash(u"Invalid access. You cannot see other users' message log.", 'warning')
+        return redirect(url_for("showMessagesAll", userid=session['userid']))
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
         # Should be modified later; add friend feature and show only those who have been added as friends
         friends = query_db('user', "SELECT * FROM User")
-        # rooms   = query_db('room', "SELECT * FROM Room WHERE user_id=?", (session['userid'],))
-        roomid = abs(hash(datetime.datetime.now()))
-        return render_template("messages.html", friends=friends)
+        if (query_db('room', "SELECT * FROM Room WHERE user_id = ?", (userid,)) == None) \
+            or (query_db('room', "SELECT * FROM Room WHERE user_id = ?", (receiverid,)) == None):
+            messages = None
+        else:
+            room_ids_sender   = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (userid,))])
+            room_ids_receiver = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (receiverid,))])
+            room_ids_common   = list(room_ids_sender.intersection(room_ids_receiver))
+            if room_ids_common == None:
+                messages = None
+            else:
+                flags = [False for i in range(len(room_ids_common))]     # Need a new room?
+                for i in range(len(room_ids_common)):
+                    rooms = query_db('room', "SELECT * FROM Room WHERE id = ?", (room_ids_common[i],))
+                    for room in rooms:
+                        if (room['user_id'] != userid and room['user_id'] != receiverid):
+                            flags[i] = True
+                            break
+                    if flags[i] == False:
+                        room_id = room_ids_common[i]
+                        break
+                # If there already exists a room only between the two
+                if all(flags):
+                    messages = None
+                else:
+                    messages = query_db('message', "SELECT * FROM Message WHERE room_id = ?", (room_id,))
 
-@socketio.on('join')
-def on_join(data):
-    userid = data['userid']
-    roomid = int(data['roomid'])
-    join_room(roomid)
-    emit('join', 'userid #' + str(userid) + ' is online.', room=roomid)
+        # for JS use (to make Row object JSON serializable)
+        if messages != None:
+            messagesDict = [dict(message) for message in messages]
+        else:
+            messagesDict = None
 
-@socketio.on('leave')
-def on_leave(data):
-    userid = data['userid']
-    roomid = int(data['roomid'])
-    leave_room(roomid)
-    emit('leave', 'userid #' + str(userid) + ' is offline.', room=roomid)
+        return render_template("messages.html", friends=friends, selectedUserID=receiverid, chatScreen=True, messages=messages, messagesDict=messagesDict)
 
-# Store msg data in DB here
+@socketio.on('connect')
+def connect():
+    print('Connected! Joining rooms the user belongs.')
+    rooms = query_db('room', "SELECT * FROM Room WHERE user_id = ?", (session['userid'],))
+    if rooms != None:
+        for room in rooms:
+            join_room(room['id'])
+
+@socketio.on('disconnect')
+def disconnect():
+    print('Disconnected. Leaving all the rooms...')
+    rooms = query_db('room', "SELECT * FROM Room WHERE user_id = ?", (session['userid'],))
+    if rooms != None:
+        for room in rooms:
+            leave_room(room['id'])
+
+# Store sent message in DB
 @socketio.on('reflectMsg')
 def on_msg_sent(data):
-    userid = data['userid']
-    roomid = int(data['roomid'])
-    msg = data['msg']
-    time = str(data['timestamp'])
-    emit('showMsg', msg, room=room)
+    sender_id   = int(data['sender_id'])
+    message     = data['message']
+    timestamp   = str(data['timestamp'])
+
+    # Set up a room to send a message
+    if 'receiver_id' in data:     # Need a new room?
+        receiver_id = int(data['receiver_id'])
+        rooms = query_db('room', "SELECT * FROM Room")
+        room_id = (1 + max([room['id'] for room in rooms])) if rooms else 1
+        modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, sender_id, timestamp))
+        modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, receiver_id, timestamp))
+    else:
+        room_id = int(data['room_id'])
+
+    modify_db('message', "INSERT INTO Message (room_id, sender_id, message, sent_at) VALUES(?, ?, ?, ?)",
+              (room_id, sender_id, message, timestamp))
+
+    join_room(room_id)
+    messageObject = dict(query_db('message', "SELECT * FROM Message WHERE room_id = ? AND sender_id = ? AND sent_at =?",
+                                  (room_id, sender_id, timestamp), True))
+
+    emit('showMsg', messageObject, room=room_id)
 
 @socketio.on('broadcast')
 def on_broadcast(data):
     msg = data['msg']
     time = str(data['timestamp'])
     emit('showMsg', msg+' at '+time, broadcast=True)
-
-@socketio.on('connect')
-def test_connect():
-    emit('connectOk', 'You\'re online.')
-
-@socketio.on('disconnect')
-def test_disconnect():
-    print('Client disconnected')
 
 ### Messaging Feature End ###
 
@@ -615,5 +662,4 @@ def after_request(response):
 # Driver
 if __name__ == '__main__':
     app.secret_key = SECRET_KEY
-    app._static_folder = '/static'
     socketio.run(app, debug="True")
