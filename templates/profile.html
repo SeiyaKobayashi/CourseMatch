@@ -1,197 +1,205 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <div class="text-center">
-        <div class="row mt-5 no-gutters">
+    <div class="text-center mb-5">
+        <div class="row mt-4 justify-content-center no-gutters">
             <div class="col-12 pb-3">
                 <div id="profileTitle" class="row justify-content-center align-items-center no-gutters">
-                    {% if editable %}
-                        <div class="col-12">
-                            <h3>Hello, {{user['name']}}!!</h3>
+                    <div class="col-12">
+                        <h2>{{user['name']}}</h2>
+                        <div class="row justify-content-center mt-4">
+                            <table class="col-4 table table-bordered">
+                                <thead>
+                                  <tr class="table-info">
+                                    <th scope="col" class="py-0">Following</th>
+                                    <th scope="col" class="py-0">Followers</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr>
+                                      <td class="py-1">
+                                          <a id="NumOffollowing" href="{{url_for('index_following_users', userid=user['id'])}}">{{followingUsers|length}}</a>
+                                      </td>
+                                      <td class="py-1">
+                                          <a id="NumOffollowers" href="{{url_for('index_followers', userid=user['id'])}}">{{followers|length}}</a>
+                                      </td>
+                                  </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    {% else %}
-                        <div class="col-12">
-                            <h3>{{user['name']}}</h3>
-                        </div>
+                    </div>
+                    {% if not editable %}
                         {% if following %}
-                            <button id="btn-following" class="btn btn-success" onclick="unfollow()">Following</button>
+                            <button id="btn-following" class="btn btn-success py-1 my-2" onclick="unfollow()">
+                                Following
+                            </button>
                         {% else %}
                             {% if followed %}
                                 <div id="followedSign" class="col-12">
                                     <p>This user is following you.</p>
                                 </div>
-                                <button id="btn-followback" class="btn btn-secondary" onclick="follow()">Follow Back</button>
+                                <button id="btn-followback" class="btn btn-secondary py-1 my-2" onclick="follow()">
+                                    Follow Back
+                                </button>
                             {% else %}
-                                <button id="btn-follow" class="btn btn-secondary" onclick="follow()">Follow</button>
+                                <button id="btn-follow" class="btn btn-secondary py-1 my-2" onclick="follow()">
+                                    Follow
+                                </button>
                             {% endif %}
                         {% endif %}
                     {% endif %}
                 </div>
             </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Email:</h5>
-                    </div>
-                    <div class="col-4">
-                        <h6>{{user['email']}}</h6>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Gender:</h5>
-                    </div>
-                    <div class="col-4">
-                        <h6>{{user['gender']}}</h6>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>College:</h5>
-                    </div>
-                    <div class="col-4">
-                        <h6>{{college['name']}}</h6>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>School:</h5>
-                    </div>
-                    <div class="col-4">
-                        {% if school %}
-                            <h6>{{school['name']}}</h6>
-                        {% else %}
-                            <h6>{{user['school']}}</h6>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>School Year:</h5>
-                    </div>
-                    <div class="col-4">
-                        <h6>{{user['year']}}</h6>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Major#1:</h5>
-                    </div>
-                    <div class="col-4">
-                        {% if major_1 %}
-                            <h6>{{major_1['name']}}</h6>
-                        {% elif user['major_1'] == 0 %}
-                            <h6>Undeclared</h6>
-                        {% else %}
-                            <h6>{{user['major_1']}}</h6>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Major#2:</h5>
-                    </div>
-                    <div class="col-4">
-                        {% if major_2 %}
-                            <h6>{{major_2['name']}}</h6>
-                        {% elif user['major_2'] == 0 %}
-                            <h6>Undeclared</h6>
-                        {% else %}
-                            <h6>{{user['major_2']}}</h6>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Minor#1:</h5>
-                    </div>
-                    <div class="col-4">
-                        {% if minor_1 %}
-                            <h6>{{minor_1['name']}}</h6>
-                        {% elif user['minor_1'] == 0 %}
-                            <h6>Undeclared</h6>
-                        {% else %}
-                            <h6>{{user['minor_1']}}</h6>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Minor#2:</h5>
-                    </div>
-                    <div class="col-4">
-                        {% if minor_2 %}
-                            <h6>{{minor_2['name']}}</h6>
-                        {% elif user['minor_2'] == 0 %}
-                            <h6>Undeclared</h6>
-                        {% else %}
-                            <h6>{{user['minor_2']}}</h6>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Profile:</h5>
-                    </div>
-                    <div class="col-4">
-                        <a>{{user['profile']}}</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Courses Taken in the Previous Terms:</h5>
-                    </div>
-                    <div class="col-4">
-                        {% for course in courses_taken %}
-                            <a href="{{url_for('viewCourse', collegeid=course['college_id'],
-                                                             schoolid=course['school_id'],
-                                                             departmentid=course['department_id'],
-                                                             courseid=course['id'])}}">
-                                {{course['name']}}
-                            </a>
-                            <br>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="row justify-content-center align-items-center no-gutters">
-                    <div class="col-2 text-right">
-                        <h5>Courses Taking in This Term:</h5>
-                    </div>
-                    <div class="col-4">
-                        {% for course in courses_taking %}
-                            <a href="{{url_for('viewCourse', collegeid=course['college_id'],
-                                                             schoolid=course['school_id'],
-                                                             departmentid=course['department_id'],
-                                                             courseid=course['id'])}}">
-                                {{course['name']}}
-                            </a>
-                            <br>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
+
+            <table class="col-10 table table-bordered mb-4">
+              <thead>
+                <tr class="table-active">
+                  <th scope="col" colspan=3>Profile Message</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan=3>
+                    {% if user['profile'] %}
+                        {{user['profile']}}
+                    {% else %}
+                        None
+                    {% endif %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table class="col-10 table table-bordered mb-4">
+              <thead>
+                <tr class="table-active">
+                  <th scope="col" style="width: 25%">Name</th>
+                  <th scope="col" style="width: 25%">Email</th>
+                  <th scope="col" style="width: 25%">Gender</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{{user['name']}}</td>
+                  <td>{{user['email']}}</td>
+                  <td>{{user['gender']}}</td>
+                </tr>
+              </tbody>
+
+              <thead>
+                <tr class="table-active">
+                  <th scope="col" style="width: 25%">College</th>
+                  <th scope="col" style="width: 25%">School</th>
+                  <th scope="col" style="width: 25%">School Year</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{{college['name']}}</td>
+                  <td>
+                      {% if school['name'] %}
+                        {{school['name']}}
+                      {% else %}
+                        None
+                      {% endif %}
+                  </td>
+                  <td>{{user['year']}}</td>
+                </tr>
+              </tbody>
+
+              <thead>
+                <tr class="table-active">
+                  <th scope="col" style="width: 25%">Majors</th>
+                  <th scope="col" style="width: 25%">Minors</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                      {% if major_1 %}
+                          {% if major_2 %}
+                             {{major_1['name']}}, {{major_2['name']}}
+                          {% else %}
+                             {{major_1['name']}}
+                          {% endif %}
+                      {% elif user['major_1'] == 0 %}
+                          Undeclared
+                      {% else %}
+                          {{user['major_1']}}
+                      {% endif %}
+                  </td>
+                  <td>
+                      {% if minor_1 %}
+                          {% if minor_2 %}
+                              {{minor_1['name']}}, {{minor_2['name']}}
+                          {% else %}
+                              {{minor_1['name']}}
+                          {% endif %}
+                      {% elif user['minor_1'] == 0 %}
+                          Undeclared
+                      {% else %}
+                          {{user['minor_1']}}
+                      {% endif %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table class="col-10 table table-bordered">
+              <thead>
+                <tr class="table-active">
+                  <th scope="col" colspan=3>Courses (Past)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan=3>
+                      {% if courses_taken %}
+                          {% for i in range(courses_taken|length) %}
+                              <a href="{{url_for('viewCourse', collegeid=courses_taken[i]['college_id'],
+                                                               schoolid=courses_taken[i]['school_id'],
+                                                               departmentid=courses_taken[i]['department_id'],
+                                                               courseid=courses_taken[i]['id'])}}">
+                                  {{courses_taken[i]['name']}}
+                              </a>
+                              {% if i != courses_taken|length-1 %}
+                                ,
+                              {% endif %}
+                          {% endfor %}
+                      {% else %}
+                          None
+                      {% endif %}
+                  </td>
+                </tr>
+              </tbody>
+
+              <thead>
+                <tr class="table-active">
+                  <th scope="col" colspan=3>Courses (Taking)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan=3>
+                      {% if courses_taking %}
+                          {% for i in range(courses_taking|length) %}
+                              <a href="{{url_for('viewCourse', collegeid=courses_taking[i]['college_id'],
+                                                               schoolid=courses_taking[i]['school_id'],
+                                                               departmentid=courses_taking[i]['department_id'],
+                                                               courseid=courses_taking[i]['id'])}}">
+                                  {{courses_taking[i]['name']}}
+                              </a>
+                              {% if i != courses_taking|length-1 %}
+                                ,
+                              {% endif %}
+                          {% endfor %}
+                      {% else %}
+                          None
+                      {% endif %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
         </div>
     </div>
 
@@ -214,10 +222,11 @@
                 }
                 var btn = document.createElement('button');
                 btn.setAttribute("id", "btn-following");
-                btn.setAttribute("class", "btn btn-success");
+                btn.setAttribute("class", "btn btn-success py-1 my-2");
                 btn.setAttribute("onclick", "unfollow()");
                 btn.innerText = "Following"
                 document.getElementById("profileTitle").appendChild(btn);
+                document.getElementById("NumOffollowers").innerText++;
             });
         }
 
@@ -233,7 +242,7 @@
             }).done((res) => {
                 document.getElementById("btn-following").remove();
                 var btn = document.createElement('button');
-                btn.setAttribute("class", "btn btn-secondary");
+                btn.setAttribute("class", "btn btn-secondary py-1 my-2");
                 btn.setAttribute("onclick", "follow()");
                 if (res['followed'] == true) {
                     var msgWrapper = document.createElement('div');
@@ -248,6 +257,7 @@
                     btn.innerText = "Follow";
                 }
                 document.getElementById("profileTitle").appendChild(btn);
+                document.getElementById("NumOffollowers").innerText --;
             });
         }
     </script>

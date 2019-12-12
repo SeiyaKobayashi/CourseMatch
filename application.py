@@ -163,8 +163,10 @@ def profile(userid):
             session.pop('courseSearch', None)
         following = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
                                     (session['userid'], userid), True) else False
+        followingUsers = query_db('follower', "SELECT * FROM Follower WHERE user_id = ?", (userid,))
         followed  = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
                                     (userid, session['userid']), True) else False
+        followers = query_db('follower', "SELECT * FROM Follower WHERE following_user_id = ?", (userid,))
         college = query_db('college', "SELECT * FROM college WHERE id = ?", (user['college'],), True)
         school  = query_db('school', "SELECT * FROM school WHERE id = ?", (user['school'],), True)
         major_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_1'],), True)
@@ -181,31 +183,15 @@ def profile(userid):
         courses_taking = [query_db('course', "SELECT * FROM course WHERE id = ?", (courseId,), True) for courseId in courseIds_taking]
 
         if user['id'] != session['userid']:
-            return render_template("profile.html", user=user, following=following, followed=followed,
-                                   college=college, school=school, major_1=major_1, major_2=major_2,
+            return render_template("profile.html", user=user, following=following, followed=followed, followingUsers=followingUsers,
+                                   followers=followers, college=college, school=school, major_1=major_1, major_2=major_2,
                                    minor_1=minor_1, minor_2=minor_2, courses_taken=courses_taken, courses_taking=courses_taking,
                                    editable=False)
         else:
-            return render_template("profile.html", user=user, following=following, followed=followed,
-                                   college=college, school=school, major_1=major_1, major_2=major_2,
+            return render_template("profile.html", user=user, following=following, followed=followed, followingUsers=followingUsers,
+                                   followers=followers, college=college, school=school, major_1=major_1, major_2=major_2,
                                    minor_1=minor_1, minor_2=minor_2, courses_taken=courses_taken, courses_taking=courses_taking,
                                    editable=True)
-
-@app.route("/<int:userid>/follow", methods=["POST"])
-def follow(userid):
-    modify_db('follower', "INSERT INTO Follower (user_id, following_user_id) VALUES(?, ?)",
-              (int(userid), request.form.get('following_user_id')))
-    followed = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
-                                (request.form.get('following_user_id'), session['userid']), True) else False
-    return json.dumps({'followed': followed})
-
-@app.route("/<int:userid>/unfollow", methods=["POST"])
-def unfollow(userid):
-    modify_db('follower', "DELETE FROM Follower WHERE user_id = ? AND following_user_id = ?",
-              (int(userid), request.form.get('following_user_id')))
-    followed = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
-                                (request.form.get('following_user_id'), session['userid']), True) else False
-    return json.dumps({'followed': followed})
 
 # Profile update page
 @app.route("/<int:userid>/edit", methods=["GET", "POST"])
@@ -301,6 +287,51 @@ def change_password(userid):
 
             flash(u"Your password has been updated successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))
+
+@app.route("/<int:userid>/follow", methods=["POST"])
+def follow(userid):
+    modify_db('follower', "INSERT INTO Follower (user_id, following_user_id) VALUES(?, ?)",
+              (int(userid), request.form.get('following_user_id')))
+    followed = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
+                                (request.form.get('following_user_id'), session['userid']), True) else False
+    return json.dumps({'followed': followed})
+
+@app.route("/<int:userid>/unfollow", methods=["POST"])
+def unfollow(userid):
+    modify_db('follower', "DELETE FROM Follower WHERE user_id = ? AND following_user_id = ?",
+              (int(userid), request.form.get('following_user_id')))
+    followed = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
+                                (request.form.get('following_user_id'), session['userid']), True) else False
+    return json.dumps({'followed': followed})
+
+@app.route("/<int:userid>/following/")
+def index_following_users(userid):
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        following_user_ids = [following_user['following_user_id'] for following_user \
+                              in query_db('follower', "SELECT * FROM Follower WHERE user_id = ?", (userid,))]
+        following_users = [query_db('user', "SELECT * FROM User WHERE id = ?", (following_user_id,), True) \
+                           for following_user_id in following_user_ids]
+        return render_template("index_following_users.html", users=following_users, query_db=query_db)
+
+@app.route("/<int:userid>/followers/")
+def index_followers(userid):
+    # If not logged in
+    if 'userid' not in session:
+        flash(u"You're not logged in. Please log in first to see the content.", 'warning')
+        return redirect(url_for("login"))
+    else:
+        if 'courseSearch' in session:
+            session.pop('courseSearch', None)
+        follower_ids = [follower['user_id'] for follower \
+                        in query_db('follower', "SELECT * FROM Follower WHERE following_user_id = ?", (userid,))]
+        followers = [query_db('user', "SELECT * FROM User WHERE id = ?", (follower_id,), True) for follower_id in follower_ids]
+        return render_template("index_followers.html", users=followers, query_db=query_db)
 
 # User index page
 @app.route("/users")
