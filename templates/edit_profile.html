@@ -7,7 +7,7 @@
     <div class="row justify-content-center mt-2 no-gutters">
         <i>Fields with asterisks(<font color="red">*</font>) are required.</i>
     </div>
-    <form action="{{url_for('update', userid=session['userid'])}}" method="post">
+    <form action="{{url_for('update', userid=session['userid'])}}" method="post" enctype="multipart/form-data">
         <div class="form-group row justify-content-center pt-4 no-gutters">
             <label for="inputName" class="col-sm-2 col-form-label">Name <font color="red">*</font></label>
             <div class="col-sm-6">
@@ -240,6 +240,15 @@
                 {% endif %}
             </div>
         </div>
+
+        <div class="form-group row justify-content-center pt-2 no-gutters">
+            <label for="inputProfileImage" class="col-sm-2 col-form-label">Profile Image</label>
+            <div class="col-sm-6">
+                <p>Current Profile Image: '{{user['image']}}'</p>
+                <input type="file" id="profile_image" name="image">
+            </div>
+        </div>
+
         <div class="form-group row justify-content-center pt-4 no-gutters">
             <div class="col-sm-12 text-center">
                 <h5>Please enter your password to save changes.</h5>

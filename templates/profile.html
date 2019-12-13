@@ -4,28 +4,49 @@
     <div class="text-center mb-5">
         <div class="row mt-4 justify-content-center no-gutters">
             <div class="col-12 pb-3">
-                <div id="profileTitle" class="row justify-content-center align-items-center no-gutters">
+                <div class="row justify-content-center align-items-center no-gutters">
                     <div class="col-12">
-                        <h2>{{user['name']}}</h2>
-                        {% if editable %}
-                            <div id="campusInfo" class="row justify-content-center mt-3">
+                        <div id="profileTitle">
+                            <img src="{{image}}" class="img-thumbnail mt-3" style="height: 130px; width: 130px;">
+                            <h2 class="mt-2">{{user['name']}}</h2>
+                            {% if editable %}
+                                <div id="campusInfo" class="row justify-content-center mt-3">
+                                    {% if is_on_campus %}
+                                        <button id="btn-on-campus" class="btn btn-success py-1 my-2" onclick="is_on_campus(0)">
+                                            I'm on campus.
+                                        </button>
+                                    {% else %}
+                                        <button id="btn-off-campus" class="btn btn-secondary py-1 my-2" onclick="is_on_campus(1)">
+                                            I'm out of campus.
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% else %}
                                 {% if is_on_campus %}
-                                    <button id="btn-on-campus" class="btn btn-success py-1 my-2" onclick="is_on_campus(0)">
-                                        I'm on campus.
+                                    <p class="text-success mt-3">This user is on campus! Send a message to catch up!</p>
+                                {% else %}
+                                    <p class="text-secondary mt-3">This user is currently out of campus.</p>
+                                {% endif %}
+                                {% if following %}
+                                    <button id="btn-following" class="btn btn-success py-1 my-2" onclick="unfollow()">
+                                        Following
                                     </button>
                                 {% else %}
-                                    <button id="btn-off-campus" class="btn btn-secondary py-1 my-2" onclick="is_on_campus(1)">
-                                        I'm out of campus.
-                                    </button>
+                                    {% if followed %}
+                                        <div id="followedSign" class="col-12">
+                                            <p class="text-info">This user is following you.</p>
+                                        </div>
+                                        <button id="btn-followback" class="btn btn-secondary py-1 mb-2" onclick="follow()">
+                                            Follow Back
+                                        </button>
+                                    {% else %}
+                                        <button id="btn-follow" class="btn btn-secondary py-1 my-2" onclick="follow()">
+                                            Follow
+                                        </button>
+                                    {% endif %}
                                 {% endif %}
-                            </div>
-                        {% else %}
-                            {% if is_on_campus %}
-                                <p class="text-success mt-3">This user is on campus! Send a message to catch up!</p>
-                            {% else %}
-                                <p class="text-secondary mt-3">This user is currently out of campus.</p>
                             {% endif %}
-                        {% endif %}
+                        </div>
                         <div class="row justify-content-center mt-3">
                             <table class="col-4 table table-bordered">
                                 <thead>
@@ -47,26 +68,6 @@
                             </table>
                         </div>
                     </div>
-                    {% if not editable %}
-                        {% if following %}
-                            <button id="btn-following" class="btn btn-success py-1 my-2" onclick="unfollow()">
-                                Following
-                            </button>
-                        {% else %}
-                            {% if followed %}
-                                <div id="followedSign" class="col-12">
-                                    <p>This user is following you.</p>
-                                </div>
-                                <button id="btn-followback" class="btn btn-secondary py-1 my-2" onclick="follow()">
-                                    Follow Back
-                                </button>
-                            {% else %}
-                                <button id="btn-follow" class="btn btn-secondary py-1 my-2" onclick="follow()">
-                                    Follow
-                                </button>
-                            {% endif %}
-                        {% endif %}
-                    {% endif %}
                 </div>
             </div>
 
@@ -261,18 +262,19 @@
             }).done((res) => {
                 document.getElementById("btn-following").remove();
                 var btn = document.createElement('button');
-                btn.setAttribute("class", "btn btn-secondary py-1 my-2");
                 btn.setAttribute("onclick", "follow()");
                 if (res['followed'] == true) {
                     var msgWrapper = document.createElement('div');
                     msgWrapper.setAttribute("id", "followedSign");
                     msgWrapper.setAttribute("class", "col-12");
-                    msgWrapper.innerHTML = "<p>This user is following you.</p>";
+                    msgWrapper.innerHTML = "<p class='text-info'>This user is following you.</p>";
                     document.getElementById("profileTitle").appendChild(msgWrapper);
                     btn.setAttribute("id", "btn-followback");
+                    btn.setAttribute("class", "btn btn-secondary py-1 mb-2");
                     btn.innerText = "Follow Back";
                 } else {
                     btn.setAttribute("id", "btn-follow");
+                    btn.setAttribute("class", "btn btn-secondary py-1 my-2");
                     btn.innerText = "Follow";
                 }
                 document.getElementById("profileTitle").appendChild(btn);

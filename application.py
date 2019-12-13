@@ -1,5 +1,6 @@
 from flask import request, render_template, redirect, url_for, session, flash
 from flask_socketio import send, emit, join_room, leave_room
+from werkzeug import secure_filename
 from init_db import app, socketio, get_db, modify_db, query_db
 from config import SECRET_KEY, emailRegEx, pwRegEx
 import re
@@ -60,10 +61,10 @@ def register():
             # Store new user in DB only if passed all validations
             modify_db('user',
                       "INSERT INTO user (name, email, password, gender, college, school, year, \
-                      major_1, major_2, minor_1, minor_2, profile, is_on_campus) \
-                      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      major_1, major_2, minor_1, minor_2, profile, is_on_campus, image) \
+                      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (session['name'], session['email'], request.form.get("password"), session['gender'],
-                       int(session['college']), None, None, None, None, None, None, None, 0))
+                       int(session['college']), None, None, None, None, None, None, None, 0, 'profile_default.png'))
 
             # Store user ID in session just for convenience
             user = query_db('user', "SELECT * FROM user WHERE email = ?", (session['email'],), True)
@@ -161,6 +162,8 @@ def profile(userid):
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
+
+        image = '/static/images/' + query_db('user', "SELECT * FROM User WHERE id = ?", (userid,), True)['image']
         is_on_campus = True if (query_db('user', "SELECT * FROM User WHERE id = ?", (userid,), True)['is_on_campus'] == 1) else False
         following = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
                                     (session['userid'], userid), True) else False
@@ -184,12 +187,14 @@ def profile(userid):
         courses_taking = [query_db('course', "SELECT * FROM course WHERE id = ?", (courseId,), True) for courseId in courseIds_taking]
 
         if user['id'] != session['userid']:
-            return render_template("profile.html", user=user, is_on_campus=is_on_campus, following=following, followed=followed, followingUsers=followingUsers,
+            return render_template("profile.html", user=user, image=image, is_on_campus=is_on_campus,
+                                   following=following, followed=followed, followingUsers=followingUsers,
                                    followers=followers, college=college, school=school, major_1=major_1, major_2=major_2,
                                    minor_1=minor_1, minor_2=minor_2, courses_taken=courses_taken, courses_taking=courses_taking,
                                    editable=False)
         else:
-            return render_template("profile.html", user=user, is_on_campus=is_on_campus, following=following, followed=followed, followingUsers=followingUsers,
+            return render_template("profile.html", user=user, image=image, is_on_campus=is_on_campus,
+                                   following=following, followed=followed, followingUsers=followingUsers,
                                    followers=followers, college=college, school=school, major_1=major_1, major_2=major_2,
                                    minor_1=minor_1, minor_2=minor_2, courses_taken=courses_taken, courses_taking=courses_taking,
                                    editable=True)
@@ -229,6 +234,7 @@ def update(userid):
             minor_1 = int(request.form.get("minor_1")) if request.form.get("minor_1") else None
             minor_2 = int(request.form.get("minor_2")) if request.form.get("minor_2") else None
             profile = request.form.get("profile") if request.form.get("profile") else None
+            image   = request.files['image'] if ('image' in request.files) else None
 
             # Validate email (has to be unique, and has to contain @, followed by .)
             if re.fullmatch(emailRegEx, request.form.get("email")) == None:
@@ -245,12 +251,23 @@ def update(userid):
                 flash(u"Invalid password. Please try again.", 'warning')
                 return redirect(url_for("update", userid=session['userid']))
 
+            # Validate image URL
+            if image:
+                imageFileName = image.filename
+                if ('.' in imageFileName) and (imageFileName.rsplit('.', 1)[1] in ['png', 'jpg', 'jpeg']):
+                    image.save('./static/images/' + secure_filename(imageFileName))
+                else:
+                    flash(u"Invalid file extension. Please upload a file ending with either .png/.jpg/.jpeg.", 'warning')
+                    return redirect(url_for("update", userid=session['userid']))
+            else:
+                imageFileName = query_db('user', "SELECT * FROM User WHERE id = ?", (userid,), True)['image']
+
             # Update user info in DB only if passed all validations
             modify_db('user', "UPDATE user \
                        SET name=?, email=?, password=?, gender=?, college=?, school=?, year=?, major_1=?, \
-                       major_2=?, minor_1=?, minor_2=?, profile=? WHERE id=?",
+                       major_2=?, minor_1=?, minor_2=?, profile=?, image=? WHERE id=?",
                        (name, email, request.form.get("password"), gender, college, school,
-                        year, major_1, major_2, minor_1, minor_2, profile, session['userid']))
+                        year, major_1, major_2, minor_1, minor_2, profile, imageFileName, userid))
 
             flash(u"Your profile has been updated successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))

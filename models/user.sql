@@ -12,5 +12,6 @@ CREATE TABLE User (
   minor_1      INTEGER,
   minor_2      INTEGER,
   profile      TEXT,
-  is_on_campus BOOLEAN
+  is_on_campus BOOLEAN,
+  image        TEXT
 );
