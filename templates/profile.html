@@ -7,7 +7,26 @@
                 <div id="profileTitle" class="row justify-content-center align-items-center no-gutters">
                     <div class="col-12">
                         <h2>{{user['name']}}</h2>
-                        <div class="row justify-content-center mt-4">
+                        {% if editable %}
+                            <div id="campusInfo" class="row justify-content-center mt-3">
+                                {% if is_on_campus %}
+                                    <button id="btn-on-campus" class="btn btn-success py-1 my-2" onclick="is_on_campus(0)">
+                                        I'm on campus.
+                                    </button>
+                                {% else %}
+                                    <button id="btn-off-campus" class="btn btn-secondary py-1 my-2" onclick="is_on_campus(1)">
+                                        I'm out of campus.
+                                    </button>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            {% if is_on_campus %}
+                                <p class="text-success mt-3">This user is on campus! Send a message to catch up!</p>
+                            {% else %}
+                                <p class="text-secondary mt-3">This user is currently out of campus.</p>
+                            {% endif %}
+                        {% endif %}
+                        <div class="row justify-content-center mt-3">
                             <table class="col-4 table table-bordered">
                                 <thead>
                                   <tr class="table-info">
@@ -259,6 +278,46 @@
                 document.getElementById("profileTitle").appendChild(btn);
                 document.getElementById("NumOffollowers").innerText --;
             });
+        }
+
+        function is_on_campus(flag) {
+            if (flag == 1) {
+                $.ajax({
+                    url: "/".concat({{session['userid']}}, "/is_on_campus"),
+                    type: "POST",
+                    dataType: 'json',
+                    data: {
+                        user_id: {{session['userid']}},
+                        flag: 1
+                    }
+                }).done((res) => {
+                    document.getElementById("btn-off-campus").remove();
+                    var btn = document.createElement('button');
+                    btn.setAttribute("id", "btn-on-campus");
+                    btn.setAttribute("class", "btn btn-success py-1 my-2");
+                    btn.setAttribute("onclick", "is_on_campus(0)");
+                    btn.innerText = "I'm on campus.";
+                    document.getElementById("campusInfo").appendChild(btn);
+                });
+            } else {
+                $.ajax({
+                    url: "/".concat({{session['userid']}}, "/is_on_campus"),
+                    type: "POST",
+                    dataType: 'json',
+                    data: {
+                        user_id: {{session['userid']}},
+                        flag: 0
+                    }
+                }).done((res) => {
+                    document.getElementById("btn-on-campus").remove();
+                    var btn = document.createElement('button');
+                    btn.setAttribute("id", "btn-off-campus");
+                    btn.setAttribute("class", "btn btn-secondary py-1 my-2");
+                    btn.setAttribute("onclick", "is_on_campus(1)");
+                    btn.innerText = "I'm out of campus.";
+                    document.getElementById("campusInfo").appendChild(btn);
+                });
+            }
         }
     </script>
 {% endblock %}

@@ -60,10 +60,10 @@ def register():
             # Store new user in DB only if passed all validations
             modify_db('user',
                       "INSERT INTO user (name, email, password, gender, college, school, year, \
-                      major_1, major_2, minor_1, minor_2, profile) \
-                      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      major_1, major_2, minor_1, minor_2, profile, is_on_campus) \
+                      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (session['name'], session['email'], request.form.get("password"), session['gender'],
-                       int(session['college']), None, None, None, None, None, None, None))
+                       int(session['college']), None, None, None, None, None, None, None, 0))
 
             # Store user ID in session just for convenience
             user = query_db('user', "SELECT * FROM user WHERE email = ?", (session['email'],), True)
@@ -72,8 +72,8 @@ def register():
             # Clear session to avoid related bugs
             session.pop('name', None)
             session.pop('email', None)
-            session.pop('gender', None)
             session.pop('college', None)
+            session.pop('gender', None)
 
             flash(u"Signed up successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))
@@ -161,6 +161,7 @@ def profile(userid):
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
+        is_on_campus = True if (query_db('user', "SELECT * FROM User WHERE id = ?", (userid,), True)['is_on_campus'] == 1) else False
         following = True if query_db('follower', "SELECT * FROM Follower WHERE user_id = ? AND following_user_id = ?",
                                     (session['userid'], userid), True) else False
         followingUsers = query_db('follower', "SELECT * FROM Follower WHERE user_id = ?", (userid,))
@@ -168,11 +169,11 @@ def profile(userid):
                                     (userid, session['userid']), True) else False
         followers = query_db('follower', "SELECT * FROM Follower WHERE following_user_id = ?", (userid,))
         college = query_db('college', "SELECT * FROM college WHERE id = ?", (user['college'],), True)
-        school  = query_db('school', "SELECT * FROM school WHERE id = ?", (user['school'],), True)
-        major_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_1'],), True)
-        major_2 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_2'],), True)
-        minor_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['minor_1'],), True)
-        minor_2 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['minor_2'],), True)
+        school  = query_db('school', "SELECT * FROM school WHERE id = ?", (user['school'],), True) if user['school'] != None else None
+        major_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_1'],), True) if user['major_1'] != None else None
+        major_2 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['major_2'],), True) if user['major_2'] != None else None
+        minor_1 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['minor_1'],), True) if user['minor_1'] != None else None
+        minor_2 = query_db('department', "SELECT * FROM department WHERE id = ?", (user['minor_2'],), True) if user['minor_2'] != None else None
         courseIds_taken = [course['course_id'] for course
                            in query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id = ? AND taken=?",
                            (user['id'], 1))]
@@ -183,12 +184,12 @@ def profile(userid):
         courses_taking = [query_db('course', "SELECT * FROM course WHERE id = ?", (courseId,), True) for courseId in courseIds_taking]
 
         if user['id'] != session['userid']:
-            return render_template("profile.html", user=user, following=following, followed=followed, followingUsers=followingUsers,
+            return render_template("profile.html", user=user, is_on_campus=is_on_campus, following=following, followed=followed, followingUsers=followingUsers,
                                    followers=followers, college=college, school=school, major_1=major_1, major_2=major_2,
                                    minor_1=minor_1, minor_2=minor_2, courses_taken=courses_taken, courses_taking=courses_taking,
                                    editable=False)
         else:
-            return render_template("profile.html", user=user, following=following, followed=followed, followingUsers=followingUsers,
+            return render_template("profile.html", user=user, is_on_campus=is_on_campus, following=following, followed=followed, followingUsers=followingUsers,
                                    followers=followers, college=college, school=school, major_1=major_1, major_2=major_2,
                                    minor_1=minor_1, minor_2=minor_2, courses_taken=courses_taken, courses_taking=courses_taking,
                                    editable=True)
@@ -287,6 +288,14 @@ def change_password(userid):
 
             flash(u"Your password has been updated successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))
+
+@app.route("/<int:userid>/is_on_campus", methods=["POST"])
+def change_campus_status(userid):
+    if int(request.form.get('flag')) == 1:
+        modify_db('user', "UPDATE User SET is_on_campus=? WHERE id=?", (1, request.form.get('user_id')))
+    else:
+        modify_db('user', "UPDATE User SET is_on_campus=? WHERE id=?", (0, request.form.get('user_id')))
+    return json.dumps({'res': 'OK'})
 
 @app.route("/<int:userid>/follow", methods=["POST"])
 def follow(userid):
