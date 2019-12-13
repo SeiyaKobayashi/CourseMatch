@@ -5,20 +5,20 @@
       <div class="col-3 overflow-auto border mt-3" style="min-height: 500px; max-height: 500px; word-wrap: break-word;">
           <ul id="chatList" class="list-group mt-3">
               <div class="row justify-content-center mb-3">
-                  <input class="col-8 py-1 mr-2" placeholder="Search friends" aria-label="Search">
-                  <button class="col-3 btn btn-outline-success py-1" type="submit">Search</button>
+                  <input id="searchUser" class="col-10 py-1 mr-2" placeholder="Search friends" aria-label="Search">
+                  <hr class="mb-0" style="width: 100%; height: 1px; background-color: light-grey;">
               </div>
               {% if friends %}
                 {% for friend in friends %}
                     {% if friend['id'] != session['userid'] %}
                         {% if friend['id'] == selectedUserID %}
-                            <li class="list-group-item active py-1">
+                            <li class="user-list list-group-item active py-1" style="display: block;">
                                 <a href="{{url_for('showMessages', userid=session['userid'], receiverid=friend['id'])}}" class="text-white">
                                     {{friend['name']}}
                                 </a>
                             </li>
                         {% else %}
-                            <li class="list-group-item py-1">
+                            <li class="user-list list-group-item py-1" style="display: block;">
                                 <a href="{{url_for('showMessages', userid=session['userid'], receiverid=friend['id'])}}" class="text-dark">
                                     {{friend['name']}}
                                 </a>
@@ -43,9 +43,12 @@
                           {{message['message']}}
                         </li>
                       {% else %}
-                        <li class="list-group-item rounded-lg align-self-start py-1 mb-2" style="max-width: 50%;">
-                          {{message['message']}}
-                        </li>
+                        <div class="d-flex align-items-start">
+                            <img src="{{receiver_image}}" class="rounded-circle mr-1" style="height: 33px; width: 33px;">
+                            <li class="list-group-item rounded-lg align-self-start py-1 mb-2" style="max-width: 45%;">
+                              {{message['message']}}
+                            </li>
+                        </div>
                       {% endif %}
                     {% endfor %}
                   </ul>
@@ -121,5 +124,39 @@
           }
           document.getElementById('message').value = ''
         }
+
+        // User search function
+        search = () => {
+          var filteredUserList = [];
+          var inputText = document.getElementById("searchUser").value;
+          var userList = document.getElementsByClassName("user-list");
+
+          // Check if inputText contains any character other than spaces
+          if (/\S/.test(inputText)) {
+            for (let i=0; i<userList.length; i++) {
+                if (userList[i].innerText.indexOf(inputText) != -1) {
+                    filteredUserList.push(userList[i]);
+                }
+            }
+            if (filteredUserList.length == 0) {
+                for (let i=0; i<userList.length; i++) {
+                    userList[i].setAttribute("style", "display: none;");
+                }
+            } else {
+                for (let i=0; i<userList.length; i++) {
+                  if (!filteredUserList.includes(userList[i])) {
+                     userList[i].setAttribute("style", "display: none;");
+                  }
+                }
+            }
+          } else {
+            for (let i=0; i<userList.length; i++) {
+                userList[i].setAttribute("style", "display: block;");
+            }
+          }
+        };
+
+        // Whenever user inputs something in search box
+        $('#searchUser').on('input', search);
     </script>
 {% endblock %}

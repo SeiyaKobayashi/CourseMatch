@@ -23,7 +23,11 @@
                                 </div>
                             {% else %}
                                 {% if is_on_campus %}
-                                    <p class="text-success mt-3">This user is on campus! Send a message to catch up!</p>
+                                    <p class="text-success mt-3">
+                                        This user is on campus! Send a
+                                        <a href="{{url_for('showMessages', userid=session['userid'], receiverid=user['id'])}}">message</a> 
+                                        to catch up!
+                                    </p>
                                 {% else %}
                                     <p class="text-secondary mt-3">This user is currently out of campus.</p>
                                 {% endif %}

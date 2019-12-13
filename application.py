@@ -15,7 +15,7 @@ def top():
     return render_template("top.html")
 
 # Register (Sign-Up) page
-@app.route("/register", methods=["GET", "POST"])
+@app.route("/register/", methods=["GET", "POST"])
 def register():
     # If already logged in
     if 'userid' in session:
@@ -80,7 +80,7 @@ def register():
             return redirect(url_for('profile', userid=session['userid']))
 
 # Log-In (Sign-In) page
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/login/", methods=["GET", "POST"])
 def login():
     # If already logged in
     if 'userid' in session:
@@ -112,7 +112,7 @@ def login():
             return redirect(url_for('profile', userid=session['userid']))
 
 # Log-Out page
-@app.route("/logout")
+@app.route("/logout/")
 def logout():
     # If not logged in
     if 'userid' not in session:
@@ -124,7 +124,7 @@ def logout():
         return redirect(url_for('top'))
 
 # Account deletion page
-@app.route("/<int:userid>/delete", methods=["GET", "POST"])
+@app.route("/<int:userid>/delete/", methods=["GET", "POST"])
 def delete(userid):
     # If not logged in
     if 'userid' not in session:
@@ -148,7 +148,7 @@ def delete(userid):
             return redirect(url_for('top'))
 
 # User profile page
-@app.route("/<int:userid>")
+@app.route("/<int:userid>/")
 def profile(userid):
     # If not logged in
     if 'userid' not in session:
@@ -200,7 +200,7 @@ def profile(userid):
                                    editable=True)
 
 # Profile update page
-@app.route("/<int:userid>/edit", methods=["GET", "POST"])
+@app.route("/<int:userid>/edit/", methods=["GET", "POST"])
 def update(userid):
     # If not logged in
     if 'userid' not in session:
@@ -273,7 +273,7 @@ def update(userid):
             return redirect(url_for('profile', userid=session['userid']))
 
 # Password change page
-@app.route("/<int:userid>/pwupdate", methods=["GET", "POST"])
+@app.route("/<int:userid>/pwupdate/", methods=["GET", "POST"])
 def change_password(userid):
     # If not logged in
     if 'userid' not in session:
@@ -306,7 +306,7 @@ def change_password(userid):
             flash(u"Your password has been updated successfully.", 'info')
             return redirect(url_for('profile', userid=session['userid']))
 
-@app.route("/<int:userid>/is_on_campus", methods=["POST"])
+@app.route("/<int:userid>/is_on_campus/", methods=["POST"])
 def change_campus_status(userid):
     if int(request.form.get('flag')) == 1:
         modify_db('user', "UPDATE User SET is_on_campus=? WHERE id=?", (1, request.form.get('user_id')))
@@ -314,7 +314,7 @@ def change_campus_status(userid):
         modify_db('user', "UPDATE User SET is_on_campus=? WHERE id=?", (0, request.form.get('user_id')))
     return json.dumps({'res': 'OK'})
 
-@app.route("/<int:userid>/follow", methods=["POST"])
+@app.route("/<int:userid>/follow/", methods=["POST"])
 def follow(userid):
     modify_db('follower', "INSERT INTO Follower (user_id, following_user_id) VALUES(?, ?)",
               (int(userid), request.form.get('following_user_id')))
@@ -322,7 +322,7 @@ def follow(userid):
                                 (request.form.get('following_user_id'), session['userid']), True) else False
     return json.dumps({'followed': followed})
 
-@app.route("/<int:userid>/unfollow", methods=["POST"])
+@app.route("/<int:userid>/unfollow/", methods=["POST"])
 def unfollow(userid):
     modify_db('follower', "DELETE FROM Follower WHERE user_id = ? AND following_user_id = ?",
               (int(userid), request.form.get('following_user_id')))
@@ -360,7 +360,7 @@ def index_followers(userid):
         return render_template("index_followers.html", users=followers, query_db=query_db)
 
 # User index page
-@app.route("/users")
+@app.route("/users/")
 def index_users():
     # If not logged in
     if 'userid' not in session:
@@ -373,7 +373,7 @@ def index_users():
         return render_template("index_users.html", users=users, query_db=query_db)
 
 # College index page
-@app.route("/colleges")
+@app.route("/colleges/")
 def index_colleges():
     # If not logged in
     if 'userid' not in session:
@@ -511,7 +511,7 @@ def viewCourse():
                                wroteReview=wroteReview)
 
 # Handles Ajax requests and returns json
-@app.route("/course/save", methods=["POST"])
+@app.route("/course/save/", methods=["POST"])
 def saveAsTaken():
     if int(request.form.get('cancel')) == 0:
         # Make sure to deal with users who heavily use browser's back/forward buttons
@@ -641,11 +641,20 @@ def showMessages(userid, receiverid):
     if int(userid) != session['userid']:
         flash(u"Invalid access. You cannot see other users' message log.", 'warning')
         return redirect(url_for("showMessagesAll", userid=session['userid']))
+    # If receiverid doesn't exist (i.e. user doesn't exist)
+    if not (query_db('user', "SELECT * FROM User WHERE id=?", (int(receiverid),), True)):
+        flash(u"Specified user doesn't exist.", 'warning')
+        return redirect(url_for("showMessagesAll", userid=session['userid']))
+    # If userid == receiverid (just for convenience)
+    if int(userid) == int(receiverid):
+        flash(u"You cannot chat with yourself.", 'warning')
+        return redirect(url_for("showMessagesAll", userid=session['userid']))
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
         # Should be modified later; add friend feature and show only those who have been added as friends
-        friends = query_db('user', "SELECT * FROM User")
+        friends        = query_db('user', "SELECT * FROM User")
+        receiver_image = '/static/images/' + query_db('user', "SELECT * FROM User WHERE id=?", (receiverid,), True)['image']
         if (query_db('room', "SELECT * FROM Room WHERE user_id = ?", (userid,)) == None) \
             or (query_db('room', "SELECT * FROM Room WHERE user_id = ?", (receiverid,)) == None):
             messages = None
@@ -678,7 +687,9 @@ def showMessages(userid, receiverid):
         else:
             messagesDict = None
 
-        return render_template("messages.html", friends=friends, selectedUserID=receiverid, chatScreen=True, messages=messages, messagesDict=messagesDict)
+        return render_template("messages.html",
+                               friends=friends, receiver_image=receiver_image, selectedUserID=receiverid,
+                               chatScreen=True, messages=messages, messagesDict=messagesDict)
 
 @socketio.on('connect')
 def connect():
