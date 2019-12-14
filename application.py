@@ -571,7 +571,7 @@ def writeCourseReview():
                 return render_template("edit_course_review.html", course=course, review=None)
         elif request.method == 'POST':
             course = query_db('course_taken', "SELECT * FROM CourseTaken WHERE user_id=? AND course_id=?",
-                              (session['userid'], int(request.args.get('courseid'))))
+                              (session['userid'], int(request.args.get('courseid'))), True)
             # If user tries to write a review for any course not yet taken by directly modifying query strings
             if not course or course['taken'] == False:
                 courseinfo = query_db('course', "SELECT * FROM Course WHERE id=?", (request.args.get('courseid'),), True)
@@ -627,12 +627,26 @@ def showMessagesAll(userid):
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
+
         # Should be modified later; add friend feature and show only those who have been added as friends
         friends = query_db('user', "SELECT * FROM User")
-        return render_template("messages.html", friends=friends, messages=None, messagesDict=None)
+        rooms   = query_db('room', "SELECT * FROM Room WHERE user_id=?", (userid,))
+        if len(rooms) == 0:
+            roomsStats = []
+        else:
+            roomsStats = []
+            for room in rooms:
+                roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
+                users = []
+                for roomWithThatID in roomsWithThatID:
+                    if roomWithThatID['user_id'] != userid:
+                        users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
+                roomsStats.append({'id': roomWithThatID['id'], 'users': users})
 
-@app.route("/<int:userid>/messages/<int:receiverid>/")
-def showMessages(userid, receiverid):
+        return render_template("messages.html", friends=friends, roomsStats=roomsStats, messagesWithUserInfo=None)
+
+@app.route("/<int:userid>/messages/<int:roomid>/")
+def showMessages(userid, roomid):
     # If not logged in
     if 'userid' not in session:
         flash(u"You're not logged in. Please log in first to see the content.", 'warning')
@@ -641,55 +655,111 @@ def showMessages(userid, receiverid):
     if int(userid) != session['userid']:
         flash(u"Invalid access. You cannot see other users' message log.", 'warning')
         return redirect(url_for("showMessagesAll", userid=session['userid']))
-    # If receiverid doesn't exist (i.e. user doesn't exist)
-    if not (query_db('user', "SELECT * FROM User WHERE id=?", (int(receiverid),), True)):
-        flash(u"Specified user doesn't exist.", 'warning')
-        return redirect(url_for("showMessagesAll", userid=session['userid']))
-    # If userid == receiverid (just for convenience)
-    if int(userid) == int(receiverid):
-        flash(u"You cannot chat with yourself.", 'warning')
+    # If user tries to access a room that the user isn't joined
+    if (roomid != 0) and (roomid not in [room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id=?", (userid,))]):
+        flash(u"Invalid access.", 'warning')
         return redirect(url_for("showMessagesAll", userid=session['userid']))
     else:
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
+
         # Should be modified later; add friend feature and show only those who have been added as friends
-        friends        = query_db('user', "SELECT * FROM User")
-        receiver_image = '/static/images/' + query_db('user', "SELECT * FROM User WHERE id=?", (receiverid,), True)['image']
-        if (query_db('room', "SELECT * FROM Room WHERE user_id = ?", (userid,)) == None) \
-            or (query_db('room', "SELECT * FROM Room WHERE user_id = ?", (receiverid,)) == None):
-            messages = None
+        friends = query_db('user', "SELECT * FROM User")
+        rooms = query_db('room', "SELECT * FROM Room WHERE user_id=?", (userid,))
+        if len(rooms) == 0:
+            roomsStats = []
         else:
-            room_ids_sender   = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (userid,))])
-            room_ids_receiver = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (receiverid,))])
-            room_ids_common   = list(room_ids_sender.intersection(room_ids_receiver))
-            if room_ids_common == None:
-                messages = None
+            roomsStats = []
+            for room in rooms:
+                roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
+                users = []
+                for roomWithThatID in roomsWithThatID:
+                    if roomWithThatID['user_id'] != userid:
+                        users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
+                roomsStats.append({'id': roomWithThatID['id'], 'users': users})
+
+        # Check whether room is selected from search box (if so roomid == 0)
+        if roomid != 0:
+            messages = query_db('message', "SELECT * FROM Message WHERE room_id = ?", (roomid,))
+            messagesWithUserInfo = []
+            for message in messages:
+                user = query_db('user', "SELECT * FROM User WHERE id=?", (message['sender_id'],), True)
+                messagesWithUserInfo.append({'message_object': dict(message), 'user_image': '/static/images/'+user['image']})
+
+            return render_template("messages.html",
+                                   friends=friends, roomsStats=roomsStats, selectedRoomID=roomid,
+                                   chatScreen=True, messagesWithUserInfo=messagesWithUserInfo)
+        else:
+            if not request.args.get('receiverid'):
+                return redirect(url_for("showMessagesAll", userid=session['userid']))
+
+            receiverid = int(request.args.get('receiverid'))
+            # If receiverid doesn't exist (i.e. user doesn't exist)
+            if not (query_db('user', "SELECT * FROM User WHERE id=?", (receiverid,), True)):
+                flash(u"Specified user doesn't exist.", 'warning')
+                return redirect(url_for("showMessagesAll", userid=session['userid']))
+            # If userid == receiverid (just for convenience)
+            if int(userid) == receiverid:
+                flash(u"You cannot chat with yourself.", 'warning')
+                return redirect(url_for("showMessagesAll", userid=session['userid']))
             else:
-                flags = [False for i in range(len(room_ids_common))]     # Need a new room?
-                for i in range(len(room_ids_common)):
-                    rooms = query_db('room', "SELECT * FROM Room WHERE id = ?", (room_ids_common[i],))
-                    for room in rooms:
-                        if (room['user_id'] != userid and room['user_id'] != receiverid):
-                            flags[i] = True
-                            break
-                    if flags[i] == False:
-                        room_id = room_ids_common[i]
-                        break
-                # If there already exists a room only between the two
-                if all(flags):
-                    messages = None
+                if (query_db('room', "SELECT * FROM Room WHERE user_id = ?", (userid,)) == None) \
+                    or (query_db('room', "SELECT * FROM Room WHERE user_id = ?", (receiverid,)) == None):
+                    messagesWithUserInfo = None
                 else:
-                    messages = query_db('message', "SELECT * FROM Message WHERE room_id = ?", (room_id,))
+                    room_ids_sender   = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (userid,))])
+                    room_ids_receiver = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (receiverid,))])
+                    room_ids_common   = list(room_ids_sender.intersection(room_ids_receiver))
+                    if room_ids_common == None:
+                        messagesWithUserInfo = None
+                    else:
+                        flags = [False for i in range(len(room_ids_common))]     # Need a new room?
+                        for i in range(len(room_ids_common)):
+                            rooms = query_db('room', "SELECT * FROM Room WHERE id = ?", (room_ids_common[i],))
+                            for room in rooms:
+                                if (room['user_id'] != userid and room['user_id'] != receiverid):
+                                    flags[i] = True
+                                    break
+                            if flags[i] == False:
+                                room_id = room_ids_common[i]
+                                break
+                        # If there already exists a room only between the two
+                        if all(flags):
+                            messagesWithUserInfo = None
+                        else:
+                            messages = query_db('message', "SELECT * FROM Message WHERE room_id = ?", (room_id,))
+                            messagesWithUserInfo = []
+                            for message in messages:
+                                user = query_db('user', "SELECT * FROM User WHERE id=?", (message['sender_id'],), True)
+                                messagesWithUserInfo.append({'message_object': dict(message), 'user_image': '/static/images/'+user['image']})
 
-        # for JS use (to make Row object JSON serializable)
-        if messages != None:
-            messagesDict = [dict(message) for message in messages]
-        else:
-            messagesDict = None
+                if messagesWithUserInfo:
+                    return render_template("messages.html",
+                                           friends=friends, roomsStats=roomsStats, selectedRoomID=room_id,
+                                           chatScreen=True, messagesWithUserInfo=messagesWithUserInfo)
+                else:
+                    user = query_db('user', "SELECT * FROM User WHERE id=?", (receiverid,), True)
+                    roomsStats.append({'id': 0, 'users': [user]})
+                    return render_template("messages.html",
+                                           friends=friends, roomsStats=roomsStats, selectedRoomID=0,
+                                           chatScreen=True, messagesWithUserInfo=messagesWithUserInfo)
 
-        return render_template("messages.html",
-                               friends=friends, receiver_image=receiver_image, selectedUserID=receiverid,
-                               chatScreen=True, messages=messages, messagesDict=messagesDict)
+# Set up a room for group chatting
+@app.route("/<int:userid>/set_up_group_chat", methods=["POST"])
+def setUpGroupChat(userid):
+    members = request.form.get('groupMembers')
+    timestamp = request.form.get('timestamp')
+    # If only one user is selected
+    if len(members) == 1:
+        return redirect(url_for('showMessages', userid=userid, roomid=0, receiverid=members[0]))
+    else:
+        rooms = query_db('room', "SELECT * FROM Room")
+        room_id = (1 + max([room['id'] for room in rooms])) if rooms else 1
+        for member in members:
+            modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, member, timestamp))
+        join_room(room_id)
+
+        return redirect(url_for('showMessagesAll', userid=userid))
 
 @socketio.on('connect')
 def connect():
@@ -728,10 +798,15 @@ def on_msg_sent(data):
               (room_id, sender_id, message, timestamp))
 
     join_room(room_id)
-    messageObject = dict(query_db('message', "SELECT * FROM Message WHERE room_id = ? AND sender_id = ? AND sent_at =?",
-                                  (room_id, sender_id, timestamp), True))
 
-    emit('showMsg', messageObject, room=room_id)
+    user = query_db('user', "SELECT * FROM User WHERE id=?", (sender_id,), True)
+    messagesWithUserInfo = {
+        'message_object': dict(query_db('message', "SELECT * FROM Message WHERE room_id = ? AND sender_id = ? AND sent_at =?",
+                                        (room_id, sender_id, timestamp), True)),
+        'user_image': '/static/images/'+user['image']
+    }
+
+    emit('showMsg', messagesWithUserInfo, room=room_id)
 
 @socketio.on('broadcast')
 def on_broadcast(data):

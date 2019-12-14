@@ -123,7 +123,7 @@
         function save(cancel, taking=0) {
             var courseId = getQueryString('courseid');
             $.ajax({
-                url: "/course/save",
+                url: "/course/save/",
                 type: "POST",
                 dataType: 'json',
                 data: {

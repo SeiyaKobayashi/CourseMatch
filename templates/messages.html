@@ -1,52 +1,65 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <div id="chatScreenWrapper" class="row justify-content-center" style="min-width: 350px;">
-      <div class="col-3 overflow-auto border mt-3" style="min-height: 500px; max-height: 500px; word-wrap: break-word;">
-          <ul id="chatList" class="list-group mt-3">
+    <div id="chatScreenWrapper" class="row justify-content-center no-gutters" style="min-width: 350px;">
+      <div id="chatList" class="col-3 overflow-auto border mt-3" style="min-height: 500px; max-height: 500px; word-wrap: break-word;">
+          <ul class="list-group mt-3 mx-3">
               <div class="row justify-content-center mb-3">
-                  <input id="searchUser" class="col-10 py-1 mr-2" placeholder="Search friends" aria-label="Search">
+                  <input id="searchUser" class="col-10 py-1" placeholder="Search friends" aria-label="Search">
                   <hr class="mb-0" style="width: 100%; height: 1px; background-color: light-grey;">
               </div>
               {% if friends %}
                 {% for friend in friends %}
                     {% if friend['id'] != session['userid'] %}
-                        {% if friend['id'] == selectedUserID %}
-                            <li class="user-list list-group-item active py-1" style="display: block;">
-                                <a href="{{url_for('showMessages', userid=session['userid'], receiverid=friend['id'])}}" class="text-white">
-                                    {{friend['name']}}
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="user-list list-group-item py-1" style="display: block;">
-                                <a href="{{url_for('showMessages', userid=session['userid'], receiverid=friend['id'])}}" class="text-dark">
-                                    {{friend['name']}}
-                                </a>
-                            </li>
-                        {% endif %}
+                        <li class="user-list-hidden list-group-item py-1" style="display: none;">
+                            <a href="{{url_for('showMessages', userid=session['userid'], roomid=0, receiverid=friend['id'])}}" class="text-dark">
+                                {{friend['name']}}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+              {% endif %}
+              {% if roomsStats|length != 0 %}
+                {% for roomStats in roomsStats %}
+                    {% if roomStats['id'] == selectedRoomID %}
+                        <li class="user-list list-group-item active py-1" style="display: block;">
+                            <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="text-white">
+                                {% for user in roomStats['users'] %}
+                                    {{user['name']}}
+                                {% endfor %}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="user-list list-group-item py-1" style="display: block;">
+                            <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="text-dark">
+                                {% for user in roomStats['users'] %}
+                                    {{user['name']}}
+                                {% endfor %}
+                            </a>
+                        </li>
                     {% endif %}
                 {% endfor %}
               {% else %}
-                <p class="mt-3">
-                    No friends. Let's send a friend request first!
+                <p id="noChatsAvailable" class="mt-3">
+                    No chats available. Search users from the search box above to start chatting!
                 </p>
               {% endif %}
           </ul>
       </div>
       <div id="chatListWrapper" class="col-8 overflow-auto border mt-3" style="min-height: 500px; max-height: 500px; word-wrap: break-word;">
           {% if chatScreen %}
-              {% if messages %}
+              {% if messagesWithUserInfo %}
                   <ul id="chatScreen" class="list-group mt-3">
-                    {% for message in messages %}
-                      {% if message['sender_id'] == session['userid'] %}
-                        <li class="list-group-item rounded-lg active align-self-end py-1 mb-2" style="max-width: 50%;">
-                          {{message['message']}}
+                    {% for messageWithUserInfo in messagesWithUserInfo %}
+                      {% if messageWithUserInfo['message_object']['sender_id'] == session['userid'] %}
+                        <li class="list-group-item rounded-lg active align-self-end py-1 mb-2 mr-3" style="max-width: 50%;">
+                          {{messageWithUserInfo['message_object']['message']}}
                         </li>
                       {% else %}
-                        <div class="d-flex align-items-start">
-                            <img src="{{receiver_image}}" class="rounded-circle mr-1" style="height: 33px; width: 33px;">
+                        <div id="msgWrapper" class="d-flex align-items-start">
+                            <img src="{{messageWithUserInfo['user_image']}}" class="rounded-circle ml-3 mr-1" style="height: 33px; width: 33px;">
                             <li class="list-group-item rounded-lg align-self-start py-1 mb-2" style="max-width: 45%;">
-                              {{message['message']}}
+                              {{messageWithUserInfo['message_object']['message']}}
                             </li>
                         </div>
                       {% endif %}
@@ -66,7 +79,7 @@
       <div class="col-8 mt-3 mb-3">
           <div class="row justify-content-between">
             <input id="message" class="col-9 align-self-start py-1 ml-2" type="text">
-            <button class="col-2 align-self-end btn-primary rounded-lg py-1 mr-2" type="submit" onclick="sendMsg()">Send</button>
+            <button id="btn-send" class="col-2 align-self-end btn btn-secondary rounded-lg py-1 mr-2" type="submit" onclick="sendMsg()" disabled>Send</button>
           </div>
       </div>
     </div>
@@ -83,18 +96,28 @@
                 msgListWrapper.setAttribute("class", "list-group mt-3");
                 document.getElementById("chatListWrapper").appendChild(msgListWrapper);
             }
-            if (data['sender_id'] == {{session['userid']}}) {
+            if (data['message_object']['sender_id'] == {{session['userid']}}) {
                 var msgWrapper = document.createElement('li');
-                msgWrapper.setAttribute("class", "list-group-item rounded-lg active align-self-end py-1 mb-2");
+                msgWrapper.setAttribute("class", "list-group-item rounded-lg active align-self-end py-1 mb-2 mr-3");
                 msgWrapper.setAttribute("style", "max-width: 50%;");
-                msgWrapper.innerText = data['message'];
+                msgWrapper.innerText = data['message_object']['message'];
                 document.getElementById("chatScreen").appendChild(msgWrapper);
             } else {
-                var msgWrapper = document.createElement('li');
-                msgWrapper.setAttribute("class", "list-group-item rounded-lg align-self-start py-1 mb-2");
-                msgWrapper.setAttribute("style", "max-width: 50%;");
-                msgWrapper.innerText = data['message'];
-                document.getElementById("chatScreen").appendChild(msgWrapper);
+                var wrapper = document.createElement('div');
+                wrapper.setAttribute("id", "msgWrapper");
+                wrapper.setAttribute("class", "d-flex align-items-start");
+                var user_image = document.createElement('img');
+                user_image.setAttribute("src", data['user_image']);
+                user_image.setAttribute("class", "rounded-circle ml-3 mr-1");
+                user_image.setAttribute("style", "height: 33px; width: 33px;");
+                document.getElementById("chatScreen").appendChild(user_image);
+                var msg = document.createElement('li');
+                msg.setAttribute("class", "list-group-item rounded-lg align-self-start py-1 mb-2");
+                msg.setAttribute("style", "max-width: 50%;");
+                msg.innerText = data['message_object']['message'];
+                wrapper.appendChild(user_image);
+                wrapper.appendChild(msg);
+                document.getElementById("chatScreen").appendChild(wrapper);
             }
         });
 
@@ -107,9 +130,9 @@
                           ((parseInt(d.getMinutes())).toString().length==2?(parseInt(d.getMinutes())).toString():"0"+(parseInt(d.getMinutes())).toString())+":"+
                           ((parseInt(d.getSeconds())).toString().length==2?(parseInt(d.getSeconds())).toString():"0"+(parseInt(d.getSeconds())).toString());
           // If the room already exists
-          if ({{messagesDict|tojson}} != null) {
+          if ({{messagesWithUserInfo|tojson}} != null) {
               socket.emit('reflectMsg',
-                          {'room_id': {{messagesDict|tojson}}[0]['room_id'],
+                          {'room_id': {{messagesWithUserInfo|tojson}}[0]['message_object']['room_id'],
                            'sender_id': {{session['userid']}},
                            'message': document.getElementById("message").value,
                            'timestamp': timestamp
@@ -117,46 +140,94 @@
           } else {
               socket.emit('reflectMsg',
                           {'sender_id': {{session['userid']}},
-                           'receiver_id': window.location.href.split('messages/')[1].slice(0, -1),
+                           'receiver_id': window.location.href.split('receiverid=')[1],
                            'message': document.getElementById("message").value,
                            'timestamp': timestamp
                           });
           }
-          document.getElementById('message').value = ''
+          document.getElementById('message').value = '';
         }
 
-        // User search function
+        checkIfValidMsg = () => {
+            var msg = document.getElementById("message").value;
+            if (/\S/.test(msg)) {
+                var btn = document.getElementById("btn-send");
+                btn.setAttribute("class", "col-2 align-self-end btn btn-primary rounded-lg py-1 mr-2");
+                btn.disabled = false;
+            } else {
+                var btn = document.getElementById("btn-send");
+                btn.setAttribute("class", "col-2 align-self-end btn btn-secondary rounded-lg py-1 mr-2");
+                btn.disabled = true;
+            }
+        }
+
+        $('#message').on('input', checkIfValidMsg);
+
+        // Show full list of friends when search box is focused
+        showUserList = () => {
+            if (document.getElementById("noChatsAvailable") != null) {
+                document.getElementById("noChatsAvailable").setAttribute("style", "display: none;");
+            }
+            var userList = document.getElementsByClassName("user-list");
+            var userListHidden = document.getElementsByClassName("user-list-hidden");
+            for (let i=0; i<userList.length; i++) {
+                userList[i].setAttribute("style", "display: none;");
+            }
+            for (let i=0; i<userListHidden.length; i++) {
+                userListHidden[i].setAttribute("style", "display: block;");
+            }
+        };
+
+        // Find users whose names are partially and/or fully matched with the inputs
         search = () => {
           var filteredUserList = [];
           var inputText = document.getElementById("searchUser").value;
-          var userList = document.getElementsByClassName("user-list");
+          var userListHidden = document.getElementsByClassName("user-list-hidden");
 
           // Check if inputText contains any character other than spaces
           if (/\S/.test(inputText)) {
-            for (let i=0; i<userList.length; i++) {
-                if (userList[i].innerText.indexOf(inputText) != -1) {
-                    filteredUserList.push(userList[i]);
+            for (let i=0; i<userListHidden.length; i++) {
+                if (userListHidden[i].innerText.indexOf(inputText) != -1) {
+                    filteredUserList.push(userListHidden[i]);
                 }
             }
             if (filteredUserList.length == 0) {
-                for (let i=0; i<userList.length; i++) {
-                    userList[i].setAttribute("style", "display: none;");
+                for (let i=0; i<userListHidden.length; i++) {
+                    userListHidden[i].setAttribute("style", "display: none;");
                 }
             } else {
-                for (let i=0; i<userList.length; i++) {
-                  if (!filteredUserList.includes(userList[i])) {
-                     userList[i].setAttribute("style", "display: none;");
+                for (let i=0; i<userListHidden.length; i++) {
+                  if (!filteredUserList.includes(userListHidden[i])) {
+                     userListHidden[i].setAttribute("style", "display: none;");
                   }
                 }
             }
           } else {
-            for (let i=0; i<userList.length; i++) {
-                userList[i].setAttribute("style", "display: block;");
+            for (let i=0; i<userListHidden.length; i++) {
+                userListHidden[i].setAttribute("style", "display: block;");
             }
           }
         };
 
-        // Whenever user inputs something in search box
+        // When user clicks anywhere outside search box
+        searchDone = () => {
+            if (document.getElementById("noChatsAvailable") != null) {
+                document.getElementById("noChatsAvailable").setAttribute("style", "display: block;");
+            }
+            document.getElementById("searchUser").value = '';
+            var userList = document.getElementsByClassName("user-list");
+            var userListHidden = document.getElementsByClassName("user-list-hidden");
+            for (let i=0; i<userList.length; i++) {
+                userList[i].setAttribute("style", "display: block;");
+            }
+            for (let i=0; i<userListHidden.length; i++) {
+                userListHidden[i].setAttribute("style", "display: none;");
+            }
+        };
+
+        $('#searchUser').on('focus', showUserList);
         $('#searchUser').on('input', search);
+        $('#chatList').on('mouseleave', searchDone);
+
     </script>
 {% endblock %}
