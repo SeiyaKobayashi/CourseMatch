@@ -745,21 +745,22 @@ def showMessages(userid, roomid):
                                            chatScreen=True, messagesWithUserInfo=messagesWithUserInfo)
 
 # Set up a room for group chatting
-@app.route("/<int:userid>/set_up_group_chat", methods=["POST"])
+@app.route("/<int:userid>/set_up_group_chat/", methods=["POST"])
 def setUpGroupChat(userid):
-    members = request.form.get('groupMembers')
+    members = [int(e) for e in json.loads((request.form.get('groupMembers')))]
     timestamp = request.form.get('timestamp')
     # If only one user is selected
     if len(members) == 1:
-        return redirect(url_for('showMessages', userid=userid, roomid=0, receiverid=members[0]))
+        # B.c. Flask's redirect doen't work for Ajax calls
+        return json.dumps({'redirectURL': "/"+str(userid)+"/messages/0/"+"?receiverid="+str(members[0])})
     else:
         rooms = query_db('room', "SELECT * FROM Room")
         room_id = (1 + max([room['id'] for room in rooms])) if rooms else 1
+        modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, userid, timestamp))
         for member in members:
             modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, member, timestamp))
-        join_room(room_id)
 
-        return redirect(url_for('showMessagesAll', userid=userid))
+        return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
 
 @socketio.on('connect')
 def connect():
