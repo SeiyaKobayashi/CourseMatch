@@ -638,12 +638,18 @@ def showMessagesAll(userid):
             for room in rooms:
                 roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
                 users = []
-                for roomWithThatID in roomsWithThatID:
-                    if roomWithThatID['user_id'] != userid:
-                        users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
-                roomsStats.append({'id': roomWithThatID['id'], 'users': users})
+                # If there's only one user within that room
+                if len(roomsWithThatID) == 1:
+                    inactive = True
+                    roomsStats.append({'id': roomsWithThatID[0]['id'], 'users': users, 'inactive': inactive})
+                else:
+                    inactive = False
+                    for roomWithThatID in roomsWithThatID:
+                        if roomWithThatID['user_id'] != userid:
+                            users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
+                    roomsStats.append({'id': roomWithThatID['id'], 'users': users, 'inactive': inactive})
 
-        return render_template("messages.html", friends=friends, roomsStats=roomsStats, messagesWithUserInfo=None)
+        return render_template("messages.html", friends=friends, roomsStats=roomsStats, messagesWithUserInfo=None, selectedRoomID=None)
 
 @app.route("/<int:userid>/messages/<int:roomid>/")
 def showMessages(userid, roomid):
@@ -673,10 +679,16 @@ def showMessages(userid, roomid):
             for room in rooms:
                 roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
                 users = []
-                for roomWithThatID in roomsWithThatID:
-                    if roomWithThatID['user_id'] != userid:
-                        users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
-                roomsStats.append({'id': roomWithThatID['id'], 'users': users})
+                # If there's only one user within that room
+                if len(roomsWithThatID) == 1:
+                    inactive = True
+                    roomsStats.append({'id': roomsWithThatID[0]['id'], 'users': users, 'inactive': inactive})
+                else:
+                    inactive = False
+                    for roomWithThatID in roomsWithThatID:
+                        if roomWithThatID['user_id'] != userid:
+                            users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
+                    roomsStats.append({'id': roomWithThatID['id'], 'users': users})
 
         # Check whether room is selected from search box (if so roomid == 0)
         if roomid != 0:
@@ -754,13 +766,51 @@ def setUpGroupChat(userid):
         # B.c. Flask's redirect doen't work for Ajax calls
         return json.dumps({'redirectURL': "/"+str(userid)+"/messages/0/"+"?receiverid="+str(members[0])})
     else:
-        rooms = query_db('room', "SELECT * FROM Room")
-        room_id = (1 + max([room['id'] for room in rooms])) if rooms else 1
-        modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, userid, timestamp))
-        for member in members:
-            modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, member, timestamp))
+        # Check if a room with those users already exists
+        room_exists = False
+        for i in range(len(members)):
+            if i == 0:
+                room_ids_1 = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (members[i],))])
+                room_ids_2 = {}
+                room_ids_common = []
+            elif i == 1:
+                room_ids_2 = room_ids_1
+                room_ids_1 = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (members[i],))])
+                room_ids_common = list(room_ids_1.intersection(room_ids_2))
+                if len(room_ids_common) == 0:
+                    break
+            else:
+                room_ids = set([room['id'] for room in query_db('room', "SELECT * FROM Room WHERE user_id = ?", (members[i],))])
+                room_ids_common = list(set(room_ids_common).intersection(room_ids))
+                if len(room_ids_common) == 0:
+                    break
+        else:    # this block runs only when for-loop above terminates without break
+            for room_id_common in room_ids_common:
+                if set([room['user_id'] for room in query_db('room', "SELECT * FROM Room WHERE id=?", (room_id_common,))]) == set(members+[userid]):
+                    room_exists = True
+                    room_id = room_id_common
+                    break
 
-        return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
+        if room_exists:
+            return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"+str(room_id)+"/"})
+        else:
+            rooms = query_db('room', "SELECT * FROM Room")
+            room_id = (1 + max([room['id'] for room in rooms])) if rooms else 1
+            modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, userid, timestamp))
+            for member in members:
+                modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, member, timestamp))
+
+            return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
+
+# Remove user from the specified room
+@app.route("/<int:userid>/leave_room/", methods=["POST"])
+def leaveRoom(userid):
+    # Delete messages if all the users within that room left
+    if len(query_db('room', "SELECT * FROM Room WHERE id=?", (int(request.form.get('room_id')),))) == 1:
+        modify_db('message', "DELETE FROM Message WHERE room_id=?", (int(request.form.get('room_id')),))
+    flash(u"You've successfully left a chat room.", 'info')
+    modify_db('room', "DELETE FROM Room WHERE id=? AND user_id=?", (int(request.form.get('room_id')), userid))
+    return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
 
 @socketio.on('connect')
 def connect():
