@@ -57,18 +57,43 @@
               {% if messagesWithUserInfo %}
                   <ul id="chatScreen" class="list-group mt-3">
                     {% for messageWithUserInfo in messagesWithUserInfo %}
-                      {% if messageWithUserInfo['message_object']['sender_id'] == session['userid'] %}
-                        <li class="list-group-item rounded-lg active align-self-end py-1 mb-2 mr-3" style="max-width: 50%;">
-                          {{messageWithUserInfo['message_object']['message']}}
-                        </li>
-                      {% else %}
-                        <div id="msgWrapper" class="d-flex align-items-start">
-                            <img src="{{messageWithUserInfo['user_image']}}" class="rounded-circle ml-3 mr-1" style="height: 33px; width: 33px;">
-                            <li class="list-group-item rounded-lg align-self-start py-1 mb-2" style="max-width: 45%;">
-                              {{messageWithUserInfo['message_object']['message']}}
-                            </li>
-                        </div>
-                      {% endif %}
+                      <div id="messageWrapper_{{messageWithUserInfo['message_object']['id']}}">
+                          {% if messageWithUserInfo['message_object']['sender_id'] == session['userid'] %}
+                            <div class="d-flex flex-row-reverse">
+                                <li id="message_{{messageWithUserInfo['message_object']['id']}}" class="list-group-item rounded-lg active align-self-end py-1 mb-2 mr-3" style="max-width: 50%;" onclick="toggleTime(1, {{messageWithUserInfo['message_object']['id']}})">
+                                  {{messageWithUserInfo['message_object']['message']}}
+                                </li>
+                            </div>
+                            <div class="d-flex flex-row-reverse">
+                                <p id="sent_at_{{messageWithUserInfo['message_object']['id']}}" class="text-muted py-1 mb-1 mr-3" style="display: none; font-size: 0.8rem;">
+                                  {% if datetime.date.today()|string|replace('-', '/') ==  messageWithUserInfo['message_object']['sent_at'].split()[0] %}
+                                    {{messageWithUserInfo['message_object']['sent_at'].split()[1]}}
+                                  {% else %}
+                                    {{messageWithUserInfo['message_object']['sent_at']}}
+                                  {% endif %}
+                                </p>
+                            </div>
+                          {% else %}
+                            <p class="align-self-start text-muted py-1 my-0 ml-3" style="font-size: 0.8rem;">
+                                {{messageWithUserInfo['user_name']}}
+                            </p>
+                            <div class="d-flex align-items-start">
+                                <img src="{{messageWithUserInfo['user_image']}}" class="rounded-circle ml-3 mr-1" style="height: 33px; width: 33px;">
+                                <li id="message_{{messageWithUserInfo['message_object']['id']}}" class="list-group-item rounded-lg align-self-start py-1" style="max-width: 45%;" onclick="toggleTime(0, {{messageWithUserInfo['message_object']['id']}})">
+                                  {{messageWithUserInfo['message_object']['message']}}
+                                </li>
+                            </div>
+                            <div class="d-flex align-items-start">
+                                <p id="sent_at_{{messageWithUserInfo['message_object']['id']}}" class="align-self-start text-muted py-1 mb-0" style="display: none; font-size: 0.8rem; margin-left: 3.5rem;">
+                                  {% if datetime.date.today()|string|replace('-', '/') ==  messageWithUserInfo['message_object']['sent_at'].split()[0] %}
+                                    {{messageWithUserInfo['message_object']['sent_at'].split()[1]}}
+                                  {% else %}
+                                    {{messageWithUserInfo['message_object']['sent_at']}}
+                                  {% endif %}
+                                </p>
+                            </div>
+                          {% endif %}
+                      </div>
                     {% endfor %}
                   </ul>
               {% else %}
@@ -102,29 +127,71 @@
                 msgListWrapper.setAttribute("class", "list-group mt-3");
                 document.getElementById("chatListWrapper").appendChild(msgListWrapper);
             }
+            var msgWrapper = document.createElement('div');
+            msgWrapper.setAttribute("id", "messageWrapper_"+data['message_object']['id'].toString());
+            var d = new Date();
+            var today = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
             if (data['message_object']['sender_id'] == {{session['userid']}}) {
-                var msgWrapper = document.createElement('li');
-                msgWrapper.setAttribute("class", "list-group-item rounded-lg active align-self-end py-1 mb-2 mr-3");
-                msgWrapper.setAttribute("style", "max-width: 50%;");
-                msgWrapper.innerText = data['message_object']['message'];
-                document.getElementById("chatScreen").appendChild(msgWrapper);
+                var wrapper_li = document.createElement('div');
+                wrapper_li.setAttribute("class", "d-flex flex-row-reverse");
+                var li = document.createElement('li');
+                li.setAttribute("id", "message_"+data['message_object']['id'].toString());
+                li.setAttribute("class", "list-group-item rounded-lg active align-self-end py-1 mb-2 mr-3");
+                li.setAttribute("style", "max-width: 50%;");
+                li.setAttribute("onclick", "toggleTime(1, "+data['message_object']['id'].toString()+")");
+                li.innerText = data['message_object']['message'];
+                var wrapper_p = document.createElement('div');
+                wrapper_p.setAttribute("class", "d-flex flex-row-reverse");
+                var p = document.createElement('p');
+                p.setAttribute("id", "sent_at_"+data['message_object']['id'].toString());
+                p.setAttribute("class", "text-muted py-1 mb-1 mr-3");
+                p.setAttribute("style", "display: none; font-size: 0.8rem;");
+                if (today == data['message_object']['sent_at'].split(' ')[0]) {
+                    p.innerText = data['message_object']['sent_at'].split(' ')[1];
+                } else {
+                    p.innerText = data['message_object']['sent_at'];
+                }
+                wrapper_li.appendChild(li);
+                wrapper_p.appendChild(p);
+                msgWrapper.appendChild(wrapper_li)
+                msgWrapper.appendChild(wrapper_p)
             } else {
-                var wrapper = document.createElement('div');
-                wrapper.setAttribute("id", "msgWrapper");
-                wrapper.setAttribute("class", "d-flex align-items-start");
-                var user_image = document.createElement('img');
-                user_image.setAttribute("src", data['user_image']);
-                user_image.setAttribute("class", "rounded-circle ml-3 mr-1");
-                user_image.setAttribute("style", "height: 33px; width: 33px;");
-                document.getElementById("chatScreen").appendChild(user_image);
-                var msg = document.createElement('li');
-                msg.setAttribute("class", "list-group-item rounded-lg align-self-start py-1 mb-2");
-                msg.setAttribute("style", "max-width: 50%;");
-                msg.innerText = data['message_object']['message'];
-                wrapper.appendChild(user_image);
-                wrapper.appendChild(msg);
-                document.getElementById("chatScreen").appendChild(wrapper);
+                var userName = document.createElement('p');
+                userName.setAttribute("class", "align-self-start text-muted py-1 my-0 ml-3");
+                userName.setAttribute("style", "font-size: 0.8rem;");
+                userName.innerText = data['user_name'];
+                var wrapper_li_image = document.createElement('div');
+                wrapper_li_image.setAttribute("class", "d-flex align-items-start");
+                // wrapper.setAttribute("id", "msgWrapper");
+                // wrapper.setAttribute("class", "d-flex align-items-start");
+                var img = document.createElement('img');
+                img.setAttribute("src", data['user_image']);
+                img.setAttribute("class", "rounded-circle ml-3 mr-1");
+                img.setAttribute("style", "height: 33px; width: 33px;");
+                var li = document.createElement('li');
+                li.setAttribute("id", "message_"+data['message_object']['id'].toString());
+                li.setAttribute("class", "list-group-item rounded-lg align-self-start py-1");
+                li.setAttribute("style", "max-width: 50%;");
+                li.setAttribute("onclick", "toggleTime(0, "+data['message_object']['id'].toString()+")");
+                li.innerText = data['message_object']['message'];
+                var wrapper_p = document.createElement('div');
+                wrapper_p.setAttribute("class", "d-flex align-items-start");
+                var p = document.createElement('p');
+                p.setAttribute("id", "sent_at_"+data['message_object']['id'].toString());
+                p.setAttribute("class", "align-self-start text-muted py-1 mb-0");
+                p.setAttribute("style", "display: none; font-size: 0.8rem; margin-left: 3.5rem;");
+                if (today == data['message_object']['sent_at'].split(' ')[0]) {
+                    p.innerText = data['message_object']['sent_at'].split(' ')[1];
+                } else {
+                    p.innerText = data['message_object']['sent_at'];
+                }
+                wrapper_li_image.appendChild(img);
+                wrapper_li_image.appendChild(li);
+                wrapper_p.appendChild(p);
+                msgWrapper.appendChild(wrapper_li_image)
+                msgWrapper.appendChild(wrapper_p)
             }
+            document.getElementById("chatScreen").appendChild(msgWrapper);
         });
 
         function sendMsg() {
@@ -157,6 +224,33 @@
           btn.disabled = true;
         }
 
+        // Show or hide time it was sent when message is clicked
+        function toggleTime(sender, id) {
+            if (sender == 1) {
+                if (document.getElementById('sent_at_'+id.toString()).style.display == 'none') {
+                    time = document.getElementById('sent_at_'+id.toString());
+                    time.setAttribute("style", "display: block; font-size: 0.8rem;");
+                    content = document.getElementById('message_'+id.toString());
+                    content.setAttribute("class", "list-group-item rounded-lg active align-self-end py-1 mr-3");
+                } else {
+                    time = document.getElementById('sent_at_'+id.toString());
+                    time.setAttribute('style', 'display: none; font-size: 0.8rem;');
+                    content = document.getElementById('message_'+id.toString());
+                    content.setAttribute('class', 'list-group-item rounded-lg active align-self-end py-1 mb-2 mr-3');
+                }
+            } else {
+                time = document.getElementById('sent_at_'+id.toString());
+                if (document.getElementById('sent_at_'+id.toString()).style.display == 'none') {
+                    time.setAttribute("style", "display: block; font-size: 0.8rem; margin-left: 3.5rem;");
+                } else {
+                    time.setAttribute('style', 'display: none; font-size: 0.8rem; margin-left: 3.5rem;');
+                }
+                content = document.getElementById('message_'+id.toString());
+                content.setAttribute('class', 'list-group-item rounded-lg align-self-start py-1');
+            }
+        }
+
+        // Check if user entered some inputs (other than spaces) in message box
         checkIfValidMsg = () => {
             var msg = document.getElementById("message").value;
             if (/\S/.test(msg)) {
@@ -165,7 +259,8 @@
                 btn.disabled = false;
             } else {
                 var btn = document.getElementById("btn-send");
-                btn.setAttribute("class", "col-2 align-self-end btn btn-secondary rounded-lg py-1 mr-2");
+                btn.setAttribute('style', 'display: block;');
+                ("class", "col-2 align-self-end btn btn-secondary rounded-lg py-1 mr-2");
                 btn.disabled = true;
             }
         }
@@ -239,7 +334,7 @@
         $('#searchUser').on('input', search);
         $('#chatList').on('mouseleave', searchDone);
 
-        // User selection
+        // User un/selection (for group chatting)
         var selectedUserIds = [];
         var selectedUserNames = [];
 

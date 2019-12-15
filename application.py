@@ -684,11 +684,11 @@ def showMessages(userid, roomid):
             messagesWithUserInfo = []
             for message in messages:
                 user = query_db('user', "SELECT * FROM User WHERE id=?", (message['sender_id'],), True)
-                messagesWithUserInfo.append({'message_object': dict(message), 'user_image': '/static/images/'+user['image']})
+                messagesWithUserInfo.append({'message_object': dict(message), 'user_name': user['name'], 'user_image': '/static/images/'+user['image']})
 
             return render_template("messages.html",
                                    friends=friends, roomsStats=roomsStats, selectedRoomID=roomid,
-                                   chatScreen=True, messagesWithUserInfo=messagesWithUserInfo)
+                                   chatScreen=True, messagesWithUserInfo=messagesWithUserInfo, datetime=datetime)
         else:
             if not request.args.get('receiverid'):
                 return redirect(url_for("showMessagesAll", userid=session['userid']))
@@ -731,18 +731,18 @@ def showMessages(userid, roomid):
                             messagesWithUserInfo = []
                             for message in messages:
                                 user = query_db('user', "SELECT * FROM User WHERE id=?", (message['sender_id'],), True)
-                                messagesWithUserInfo.append({'message_object': dict(message), 'user_image': '/static/images/'+user['image']})
+                                messagesWithUserInfo.append({'message_object': dict(message), 'user_name': user['name'], 'user_image': '/static/images/'+user['image']})
 
                 if messagesWithUserInfo:
                     return render_template("messages.html",
                                            friends=friends, roomsStats=roomsStats, selectedRoomID=room_id,
-                                           chatScreen=True, messagesWithUserInfo=messagesWithUserInfo)
+                                           chatScreen=True, messagesWithUserInfo=messagesWithUserInfo, datetime=datetime)
                 else:
                     user = query_db('user', "SELECT * FROM User WHERE id=?", (receiverid,), True)
                     roomsStats.append({'id': 0, 'users': [user]})
                     return render_template("messages.html",
                                            friends=friends, roomsStats=roomsStats, selectedRoomID=0,
-                                           chatScreen=True, messagesWithUserInfo=messagesWithUserInfo)
+                                           chatScreen=True, messagesWithUserInfo=messagesWithUserInfo, datetime=datetime)
 
 # Set up a room for group chatting
 @app.route("/<int:userid>/set_up_group_chat/", methods=["POST"])
@@ -804,6 +804,7 @@ def on_msg_sent(data):
     messagesWithUserInfo = {
         'message_object': dict(query_db('message', "SELECT * FROM Message WHERE room_id = ? AND sender_id = ? AND sent_at =?",
                                         (room_id, sender_id, timestamp), True)),
+        'user_name': user['name'],
         'user_image': '/static/images/'+user['image']
     }
 
