@@ -24,15 +24,15 @@
                 <span class="navbar-toggler-icon"></span>
               </button>
               <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav mr-auto">
+                <ul class="navbar-nav ml-auto">
                   <li class="nav-item active">
-                    <a class="nav-link" href="{{url_for('profile', userid=session['userid'])}}">MyPage<span class="sr-only">(current)</span></a>
+                    <a class="nav-link" href="{{url_for('profile', userid=session['userid'])}}">My Page<span class="sr-only">(current)</span></a>
                   </li>
                   <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                       Menu
                     </a>
-                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
                       <a class="dropdown-item" href="{{url_for('update', userid=session['userid'])}}">Profile Update</a>
                       <div class="dropdown-divider"></div>
                       <a class="dropdown-item" href="{{url_for('index_users')}}">Users</a>
@@ -116,12 +116,12 @@
                 <span class="navbar-toggler-icon"></span>
               </button>
               <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav mr-auto">
-                  <li class="nav-item active">
-                    <a class="nav-link" href="{{url_for('register')}}">Register<span class="sr-only">(current)</span></a>
-                  </li>
+                <ul class="navbar-nav ml-auto">
                   <li class="nav-item active">
                     <a class="nav-link" href="{{url_for('login')}}">Login<span class="sr-only">(current)</span></a>
+                  </li>
+                  <li class="nav-item active">
+                    <a class="nav-link" href="{{url_for('register')}}">Register<span class="sr-only">(current)</span></a>
                   </li>
                 </ul>
               </div>

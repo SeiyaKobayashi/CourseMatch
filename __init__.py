@@ -24,6 +24,11 @@ def init_app():
         init_db("message")
         print('Done.')
 
+    if not path.exists("models/message_seen.db"):
+        print('Initializing "message_seen.db"...')
+        init_db("message_seen")
+        print('Done.')
+
     if not path.exists("models/course_taken.db"):
         print('Initializing "course_taken.db"...')
         init_db("course_taken")
