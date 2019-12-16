@@ -648,7 +648,8 @@ def showMessagesAll(userid):
                                            "SELECT * FROM Message WHERE room_id=? ORDER BY id DESC LIMIT 1",
                                            (room['id'],), True)
                     # Check if the user has already seen all the messages in that room
-                    if lastMessage['id'] == query_db('message_seen', "SELECT * FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, room['id']), True)['last_seen_msg_id']:
+                    if lastMessage['id'] \
+                       == query_db('message_seen', "SELECT * FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, room['id']), True)['last_seen_msg_id']:
                         seenAll = True
                     else:
                         seenAll = False
@@ -666,7 +667,7 @@ def showMessagesAll(userid):
                 else:
                     for roomWithThatID in roomsWithThatID:
                         if roomWithThatID['user_id'] != userid:
-                            users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
+                            users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                     roomsStats.append({
                         'id': roomWithThatID['id'],
                         'users': users,
@@ -736,6 +737,8 @@ def showMessages(userid, roomid):
                                     seenAll = True
                                 else:
                                     seenAll = False
+                            else:
+                                seenAll = True
 
                     roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
                     users = []
@@ -750,7 +753,7 @@ def showMessages(userid, roomid):
                     else:
                         for roomWithThatID in roomsWithThatID:
                             if roomWithThatID['user_id'] != userid:
-                                users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
+                                users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                         roomsStats.append({
                             'id': roomWithThatID['id'],
                             'users': users,
@@ -778,7 +781,7 @@ def showMessages(userid, roomid):
             else:
                 # Set up roomsStats
                 for room in rooms:
-                    # If it's an empty room (no messages, only available for group chatting)
+                    # If it's an empty room (no messages, only possible for group chatting)
                     if query_db('message', "SELECT * FROM Message WHERE room_id=?", (room['id'],)) == None:
                         seenAll = True
                     else:
@@ -807,7 +810,7 @@ def showMessages(userid, roomid):
                     else:
                         for roomWithThatID in roomsWithThatID:
                             if roomWithThatID['user_id'] != userid:
-                                users.append(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True))
+                                users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                         roomsStats.append({
                             'id': roomWithThatID['id'],
                             'users': users,
@@ -887,15 +890,19 @@ def leaveRoom(userid):
 
 @socketio.on('connect')
 def connect():
-    print('Connected! Joining rooms the user belongs.')
+    print('User #' + str(session['userid']) + ' Connected! Joining rooms the user belongs.')
     rooms = query_db('room', "SELECT * FROM Room WHERE user_id = ?", (session['userid'],))
+    room_ids = [room['id'] for room in rooms]
+    print('Currently joining rooms:', room_ids)
     if rooms != None:
         for room in rooms:
             join_room(room['id'])
 
+    emit('connect', room_ids)
+
 @socketio.on('disconnect')
 def disconnect():
-    print('Disconnected. Leaving all the rooms...')
+    print('User #' + str(session['userid']) + ' Disconnected. Leaving all the rooms...')
     rooms = query_db('room', "SELECT * FROM Room WHERE user_id = ?", (session['userid'],))
     if rooms != None:
         for room in rooms:
@@ -991,7 +998,7 @@ def setUpGroupChat(data):
             # If there's only one user within that room
             if len(roomsWithThatID) == 1:
                 newRoom = {
-                    'id': roomsWithThatID[0]['id'],
+                    'id': room_id,
                     'users': users,
                     'inactive': 1
                 }
@@ -1000,7 +1007,7 @@ def setUpGroupChat(data):
                     if roomWithThatID['user_id'] != int(session['userid']):
                         users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                 newRoom = {
-                    'id': roomWithThatID['id'],
+                    'id': room_id,
                     'users': users,
                     'inactive': 0
                 }

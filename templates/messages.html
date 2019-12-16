@@ -69,7 +69,7 @@
                             {% endif %}
                         {% endfor %}
                       {% else %}
-                        <p id="noChatsAvailable" class="mt-3">
+                        <p id="noChatsAvailable" class="mt-3" style="display: block;">
                             No chats available. Search users from the search box above to start chatting!
                         </p>
                       {% endif %}
@@ -154,14 +154,26 @@
 
     <script>
         const socket = io('');
+        var currentRooms = [];     // Global variable to store list of rooms currently joining
 
         // Make sure that scroll bar always points at the bottom
         chatHistory = document.getElementById("chatListWrapper");
         chatHistory.scrollTop = chatHistory.scrollHeight;
 
+        socket.on('connect', function(rooms) {
+            if (rooms != null) {
+                currentRooms = rooms;
+                getCurrentRooms();
+            }
+        });
+
+        function getCurrentRooms() {
+            return currentRooms;
+        }
+
         // When user receives a message
         socket.on('showMsg', function(data) {
-            if (window.location.pathname == "/"+{{session['userid']}}+"/messages/"+data['message_object']['room_id']+"/") {
+            if ((window.location.pathname == "/"+{{session['userid']}}+"/messages/"+data['message_object']['room_id']+"/")　|| (window.location.pathname.split('?')[0] == "/"+{{session['userid']}}+"/messages/0/")) {
                 var initialMsg = document.getElementById("initialMsg");
                 if (typeof(initialMsg) != 'undefined' && initialMsg != null) {
                     initialMsg.style.display = "none";
@@ -485,61 +497,111 @@
 
         // When new room is created
         socket.on('reflectNewRoom', function(data) {
-            // When roomid == 0 is currently selected
-            if (window.location.pathname.includes('receiverid')) {
-                currentActiveRoom = document.getElementById("room_active_0");
-                currentActiveRoom.setAttribute("id", "room_0");
-                currentActiveRoom.setAttribute("class", "room-list list-group-item py-1");
-                currentActiveRoomText = document.getElementsByClassName("room_active_0_text");
-                currentActiveRoomText[0].setAttribute("class", "text-dark");
-            } else if (window.location.pathname.split('messages/')[1] != "") {     // When another room is currently selected
-                currentActiveRoom = document.getElementById("room_active_"+window.location.pathname.split('messages/')[1].slice(0,-1));
-                currentActiveRoom.setAttribute("id", "room_"+window.location.pathname.split('messages/')[1].slice(0,-1));
-                currentActiveRoom.setAttribute("class", "room-list list-group-item py-1");
-                currentActiveRoomText = document.getElementsByClassName("room_active_"+window.location.pathname.split('messages/')[1].slice(0,-1)+"_text");
-                currentActiveRoomText[0].setAttribute("class", "text-dark");
-            }
-            var initialMsg = document.getElementById("noChatsAvailable");
-            if (typeof(initialMsg) != 'undefined' && initialMsg != null) {
-                initialMsg.style.display = "none";
-            }
-            roomsWrapper = document.getElementById("roomsWrapper");
-            var newRoomWrapper = document.createElement('li');
-            newRoomWrapper.setAttribute("id", "room_active_"+data['id'].toString());
-            newRoomWrapper.setAttribute("class", "room-list list-group-item active py-1");
-            newRoomWrapper.setAttribute("style", "display: block;");
-            var span = document.createElement('span');
-            span.setAttribute("class", "mr-1");
-            span.setAttribute("style", "height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block");
-            var a = document.createElement('a');
-            a.setAttribute('href', "/"+{{session['userid']}}+"/messages/"+data['id'].toString());
-            a.setAttribute('class', "text-white");
-            if (data['inactive'] == 1) {
-                a.innerText = "Inactive Chat";
-            } else {
-                a.innerText = '';
-                for (let i=0; i<data['users'].length; i++) {
-                    a.innerText += data['users'][i]['name']
+            // For the user who created this room
+            if (window.location.pathname.split('/')[1] == {{session['userid']}}) {
+                // Clear the selection
+                p = document.getElementById("selectedUsers");
+                p.setAttribute("style", "display: none;");
+                p.innerText = '';
+
+                // Remove initial message (very rare)
+                if (document.getElementById("noChatsAvailable") != null) {
+                    document.getElementById("noChatsAvailable").remove();
+                }
+
+                // Make currently selected room inactive
+                if (window.location.pathname.includes('receiverid')) {     // When roomid == 0 is currently selected
+                    currentActiveRoom = document.getElementById("room_active_0");
+                    currentActiveRoom.setAttribute("id", "room_0");
+                    currentActiveRoom.setAttribute("class", "room-list list-group-item py-1");
+                    currentActiveRoomText = document.getElementsByClassName("room_active_0_text");
+                    currentActiveRoomText[0].setAttribute("class", "text-dark");
+                } else if (window.location.pathname.split('messages/')[1] != "") {     // When another room is currently selected
+                    currentActiveRoom = document.getElementById("room_active_"+window.location.pathname.split('messages/')[1].slice(0,-1));
+                    currentActiveRoom.setAttribute("id", "room_"+window.location.pathname.split('messages/')[1].slice(0,-1));
+                    currentActiveRoom.setAttribute("class", "room-list list-group-item py-1");
+                    currentActiveRoomText = document.getElementsByClassName("room_active_"+window.location.pathname.split('messages/')[1].slice(0,-1)+"_text");
+                    currentActiveRoomText[0].setAttribute("class", "text-dark");
+                }
+
+                // Create element for new room
+                roomsWrapper = document.getElementById("roomsWrapper");
+                var newRoomWrapper = document.createElement('li');
+                newRoomWrapper.setAttribute("id", "room_active_"+data['id'].toString());
+                newRoomWrapper.setAttribute("class", "room-list list-group-item active py-1");
+                newRoomWrapper.setAttribute("style", "display: block;");
+                // var span = document.createElement('span');
+                // span.setAttribute("class", "mr-1");
+                // span.setAttribute("style", "height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block");
+                var a = document.createElement('a');
+                a.setAttribute('href', "/"+{{session['userid']}}+"/messages/"+data['id'].toString());
+                a.setAttribute('class', "text-white");
+                if (data['inactive'] == 1) {
+                    a.innerText = "Inactive Chat";
+                } else {
+                    a.innerText = '';
+                    for (let i=0; i<data['users'].length; i++) {
+                        a.innerText += data['users'][i]['name']
+                    }
+                }
+                var img = document.createElement('img');
+                img.setAttribute('id', "menu_icon_"+data['id'].toString());
+                img.setAttribute('src', "/static/images/menu_icon.png");
+                img.setAttribute('class', "rounded-circle float-right mt-1");
+                img.setAttribute('style', "display: block; height: 16px; width: 16px;");
+                img.setAttribute('onclick', "leaveRoom("+data['id'].toString()+")");
+
+                // newRoomWrapper.appendChild(span);
+                newRoomWrapper.appendChild(a);
+                newRoomWrapper.appendChild(img);
+                roomsWrapper.appendChild(newRoomWrapper);
+            } else {     // For other users displaying messaging pages
+                var rooms = getCurrentRooms();
+                for (let i=0; i<rooms.length; i++) {
+                    if (window.location.pathname.includes('messages')) {
+                        var visibleRooms = [];
+                        for (let j=0; j<{{roomsStats|tojson}}.length; j++) {
+                            visibleRooms.push({{roomsStats|tojson}}[i]['id']);
+                        }
+                        if (!visibleRooms.includes(rooms[i])) {
+                            // Remove initial message (very rare)
+                            if (document.getElementById("noChatsAvailable") != null) {
+                                document.getElementById("noChatsAvailable").remove();
+                            }
+
+                            // Create element for new room
+                            roomsWrapper = document.getElementById("roomsWrapper");
+                            var newRoomWrapper = document.createElement('li');
+                            newRoomWrapper.setAttribute("id", "room_active_"+rooms[i].toString());
+                            newRoomWrapper.setAttribute("class", "room-list list-group-item py-1");
+                            newRoomWrapper.setAttribute("style", "display: block;");
+                            var span = document.createElement('span');
+                            span.setAttribute("class", "mr-1");
+                            span.setAttribute("style", "height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block");
+                            var a = document.createElement('a');
+                            a.setAttribute('href', "/"+{{session['userid']}}+"/messages/"+rooms[i].toString());
+                            a.setAttribute('class', "text-white");
+                            a.innerText = 'New Chat';
+                            var img = document.createElement('img');
+                            img.setAttribute('id', "menu_icon_"+rooms[i].toString());
+                            img.setAttribute('src', "/static/images/menu_icon.png");
+                            img.setAttribute('class', "rounded-circle float-right mt-1");
+                            img.setAttribute('style', "display: block; height: 16px; width: 16px;");
+                            img.setAttribute('onclick', "leaveRoom("+rooms[i].toString()+")");
+
+                            newRoomWrapper.appendChild(span);
+                            newRoomWrapper.appendChild(a);
+                            newRoomWrapper.appendChild(img);
+                            roomsWrapper.appendChild(newRoomWrapper);
+                        }
+                    }
                 }
             }
-            var img = document.createElement('img');
-            img.setAttribute('id', "menu_icon_"+data['id'].toString());
-            img.setAttribute('src', "/static/images/menu_icon.png");
-            img.setAttribute('class', "rounded-circle float-right mt-1");
-            img.setAttribute('style', "display: block; height: 16px; width: 16px;");
-            img.setAttribute('onclick', "leaveRoom("+data['id'].toString()+")");
-
-            newRoomWrapper.appendChild(span);
-            newRoomWrapper.appendChild(a);
-            newRoomWrapper.appendChild(img);
-
-            roomsWrapper.appendChild(newRoomWrapper);
         });
 
         // When URL is sent from the server on socketio
         socket.on('redirect', function(data) {
             window.location = data.url;
         });
-
     </script>
 {% endblock %}
