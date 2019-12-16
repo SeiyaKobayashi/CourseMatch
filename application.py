@@ -637,8 +637,8 @@ def showMessagesAll(userid):
         else:
             roomsStats = []
             for room in rooms:
-                # If it's an empty room (no messages, only available for group chatting)
-                if query_db('message', "SELECT * FROM Message WHERE room_id=?", (room['id'],), True) == None:
+                # If it's an empty room (no messages, only possible for group chatting)
+                if len(query_db('message', "SELECT * FROM Message WHERE room_id=?", (room['id'],))) == 0:
                     seenAll = True
                 # If someone else sent message(s), but the user hasn't seen anything in that room yet
                 elif query_db('message_seen', "SELECT * FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, room['id']), True) == None:
@@ -648,8 +648,7 @@ def showMessagesAll(userid):
                                            "SELECT * FROM Message WHERE room_id=? ORDER BY id DESC LIMIT 1",
                                            (room['id'],), True)
                     # Check if the user has already seen all the messages in that room
-                    if lastMessage['id'] \
-                       == query_db('message_seen', "SELECT * FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, room['id']), True)['last_seen_msg_id']:
+                    if lastMessage['id'] == query_db('message_seen', "SELECT * FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, room['id']), True)['last_seen_msg_id']:
                         seenAll = True
                     else:
                         seenAll = False
@@ -711,7 +710,7 @@ def showMessages(userid, roomid):
                 # Set up roomsStats
                 for room in rooms:
                     # If it's an empty room (no messages, only available for group chatting)
-                    if query_db('message', "SELECT * FROM Message WHERE room_id=?", (room['id'],)) == None:
+                    if len(query_db('message', "SELECT * FROM Message WHERE room_id=?", (room['id'],))) == 0:
                         seenAll = True
                     else:
                         lastMessage = query_db('message',
@@ -722,7 +721,7 @@ def showMessages(userid, roomid):
                             if query_db('message_seen', "SELECT * FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, room['id']), True) == None:
                                 if lastMessage != None:
                                     modify_db('message_seen',
-                                              "INSERT INTO MessageSeen (user_id, last_seen_msg_id, room_id) VALUES(?, ?, ?)",
+                                              "INSERT INTO MessageSeen (user_id, room_id, last_seen_msg_id) VALUES(?, ?, ?)",
                                               (userid, room['id'], lastMessage['id']))
                             else:
                                 # Record that user has seen the latest message sent to this room
@@ -738,14 +737,14 @@ def showMessages(userid, roomid):
                                 else:
                                     seenAll = False
                             else:
-                                seenAll = True
+                                seenAll = False
 
                     roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
                     users = []
                     # If there's only one user within that room
                     if len(roomsWithThatID) == 1:
                         roomsStats.append({
-                            'id': roomsWithThatID[0]['id'],
+                            'id': dict(roomsWithThatID[0])['id'],
                             'users': users,
                             'seenAll': seenAll,
                             'inactive': True
@@ -755,7 +754,7 @@ def showMessages(userid, roomid):
                             if roomWithThatID['user_id'] != userid:
                                 users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                         roomsStats.append({
-                            'id': roomWithThatID['id'],
+                            'id': dict(roomWithThatID)['id'],
                             'users': users,
                             'seenAll': seenAll,
                             'inactive': False
@@ -802,7 +801,7 @@ def showMessages(userid, roomid):
                     # If there's only one user within that room
                     if len(roomsWithThatID) == 1:
                         roomsStats.append({
-                            'id': roomsWithThatID[0]['id'],
+                            'id': dict(roomsWithThatID[0])['id'],
                             'users': users,
                             'seenAll': seenAll,
                             'inactive': True
@@ -812,7 +811,7 @@ def showMessages(userid, roomid):
                             if roomWithThatID['user_id'] != userid:
                                 users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                         roomsStats.append({
-                            'id': roomWithThatID['id'],
+                            'id': dict(roomWithThatID)['id'],
                             'users': users,
                             'seenAll': seenAll,
                             'inactive': False
@@ -892,8 +891,6 @@ def leaveRoom(userid):
 def connect():
     print('User #' + str(session['userid']) + ' Connected! Joining rooms the user belongs.')
     rooms = query_db('room', "SELECT * FROM Room WHERE user_id = ?", (session['userid'],))
-    room_ids = [room['id'] for room in rooms]
-    print('Currently joining rooms:', room_ids)
     if rooms != None:
         for room in rooms:
             join_room(room['id'])
@@ -925,6 +922,7 @@ def on_msg_sent(data):
     else:
         room_id = int(data['room_id'])
 
+    # Store new message in DB
     modify_db('message', "INSERT INTO Message (room_id, sender_id, message, sent_at) VALUES(?, ?, ?, ?)",
               (room_id, sender_id, message, timestamp))
 
@@ -933,8 +931,8 @@ def on_msg_sent(data):
         modify_db('message_seen', "INSERT INTO MessageSeen (user_id, room_id, last_seen_msg_id) VALUES(?, ?, ?)",
                   (sender_id, room_id, query_db('message', "SELECT * FROM Message WHERE room_id=? ORDER BY id DESC LIMIT 1", (room_id, ), True)['id']))
     else:
-        modify_db('message_seen', "UPDATE MessageSeen SET last_seen_msg_id=?",
-                  (query_db('message', "SELECT * FROM Message WHERE room_id=? ORDER BY id DESC LIMIT 1", (room_id, ), True)['id'],))
+        modify_db('message_seen', "UPDATE MessageSeen SET last_seen_msg_id=? WHERE user_id=? AND room_id=?",
+                  (query_db('message', "SELECT * FROM Message WHERE room_id=? ORDER BY id DESC LIMIT 1", (room_id, ), True)['id'], sender_id, room_id))
 
     join_room(room_id)
 

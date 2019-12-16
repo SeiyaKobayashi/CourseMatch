@@ -28,10 +28,8 @@
                         {% for roomStats in roomsStats %}
                             {% if roomStats['id'] == selectedRoomID %}
                                 <li id="{{'room_active_'+roomStats['id']|string}}" class="room-list list-group-item active py-1" style="display: block;">
-                                    {% if roomStats['seenAll'] %}
-                                        {% if roomStats['seenAll'] == 0 %}
-                                            <span class="mr-1" style="height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block"></span>
-                                        {% endif %}
+                                    {% if roomStats['seenAll'] == 0 %}
+                                        <span id="unseenSign" class="mr-1" style="height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block"></span>
                                     {% endif %}
                                     {% if roomStats['inactive'] %}
                                         <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="{{'room_active_'+roomStats['id']|string+'_text'}} text-white">
@@ -48,10 +46,8 @@
                                 </li>
                             {% else %}
                                 <li id="{{'room_'+roomStats['id']|string}}" class="room-list list-group-item py-1" style="display: block;">
-                                    {% if roomStats['seenAll'] %}
-                                        {% if roomStats['seenAll'] == 0 %}
-                                            <span class="mr-1" style="height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block"></span>
-                                        {% endif %}
+                                    {% if roomStats['seenAll'] == 0 %}
+                                        <span id="unseenSign" class="mr-1" style="height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block"></span>
                                     {% endif %}
                                     {% if roomStats['inactive'] %}
                                         <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="text-secondary">
@@ -160,13 +156,6 @@
         chatHistory = document.getElementById("chatListWrapper");
         chatHistory.scrollTop = chatHistory.scrollHeight;
 
-        socket.on('connect', function(rooms) {
-            if (rooms != null) {
-                currentRooms = rooms;
-                getCurrentRooms();
-            }
-        });
-
         function getCurrentRooms() {
             return currentRooms;
         }
@@ -181,6 +170,12 @@
                     msgListWrapper.setAttribute("id", "chatScreen");
                     msgListWrapper.setAttribute("class", "list-group mt-3");
                     chatScreen = document.getElementById("chatScreenWrapper").appendChild(msgListWrapper);
+                }
+                var unseenSign = document.getElementById("unseenSign");
+                if (typeof(unseenSign) != 'undefined' && unseenSign != null) {
+                    if (unseenSign.style.display == "inline-block") {     // If unseen sign is on
+                        unseenSign.style.display == "none"
+                    }
                 }
                 var msgWrapper = document.createElement('div');
                 msgWrapper.setAttribute("id", "messageWrapper_"+data['message_object']['id'].toString());
@@ -555,47 +550,6 @@
                 newRoomWrapper.appendChild(a);
                 newRoomWrapper.appendChild(img);
                 roomsWrapper.appendChild(newRoomWrapper);
-            } else {     // For other users displaying messaging pages
-                var rooms = getCurrentRooms();
-                for (let i=0; i<rooms.length; i++) {
-                    if (window.location.pathname.includes('messages')) {
-                        var visibleRooms = [];
-                        for (let j=0; j<{{roomsStats|tojson}}.length; j++) {
-                            visibleRooms.push({{roomsStats|tojson}}[i]['id']);
-                        }
-                        if (!visibleRooms.includes(rooms[i])) {
-                            // Remove initial message (very rare)
-                            if (document.getElementById("noChatsAvailable") != null) {
-                                document.getElementById("noChatsAvailable").remove();
-                            }
-
-                            // Create element for new room
-                            roomsWrapper = document.getElementById("roomsWrapper");
-                            var newRoomWrapper = document.createElement('li');
-                            newRoomWrapper.setAttribute("id", "room_active_"+rooms[i].toString());
-                            newRoomWrapper.setAttribute("class", "room-list list-group-item py-1");
-                            newRoomWrapper.setAttribute("style", "display: block;");
-                            var span = document.createElement('span');
-                            span.setAttribute("class", "mr-1");
-                            span.setAttribute("style", "height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block");
-                            var a = document.createElement('a');
-                            a.setAttribute('href', "/"+{{session['userid']}}+"/messages/"+rooms[i].toString());
-                            a.setAttribute('class', "text-white");
-                            a.innerText = 'New Chat';
-                            var img = document.createElement('img');
-                            img.setAttribute('id', "menu_icon_"+rooms[i].toString());
-                            img.setAttribute('src', "/static/images/menu_icon.png");
-                            img.setAttribute('class', "rounded-circle float-right mt-1");
-                            img.setAttribute('style', "display: block; height: 16px; width: 16px;");
-                            img.setAttribute('onclick', "leaveRoom("+rooms[i].toString()+")");
-
-                            newRoomWrapper.appendChild(span);
-                            newRoomWrapper.appendChild(a);
-                            newRoomWrapper.appendChild(img);
-                            roomsWrapper.appendChild(newRoomWrapper);
-                        }
-                    }
-                }
             }
         });
 
