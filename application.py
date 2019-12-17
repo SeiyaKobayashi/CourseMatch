@@ -630,6 +630,7 @@ def showMessagesAll(userid):
 
         # Should be modified later; add friend feature and show only those who have been added as friends
         friends = query_db('user', "SELECT * FROM User")
+
         rooms   = query_db('room', "SELECT * FROM Room WHERE user_id=?", (userid,))
         if len(rooms) == 0:
             roomsStats = []
@@ -694,15 +695,60 @@ def showMessages(userid, roomid):
         if 'courseSearch' in session:
             session.pop('courseSearch', None)
 
+        # # If previous page was chatting screen, update message_seen table to mark as seen
+        # if request.referrer:
+        #     if 'messages' in request.referrer:
+        #         prevRoomId = (request.referrer).split('messages/')[1][:-1]
+        #         if len((request.referrer).split('messages/')[1]) > 2:     # if roomid == 0
+        #             rooms = query_db('room', "SELECT * FROM Room WHERE user_id=?", (userid,))
+        #             for room in rooms:
+        #                 room_user_ids = [roomWithThatID['user_id'] for roomWithThatID in query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))]
+        #                 room_user_ids = room_user_ids.sort()
+        #                 sender_receiver_ids = [userid, int((request.referrer).split('receiverid=')[1])].sort()
+        #                 if room_user_ids == sender_receiver_ids:
+        #                     lastMessage = query_db('message',
+        #                                             "SELECT * FROM Message WHERE room_id=? ORDER BY id DESC LIMIT 1",
+        #                                             (room['id'],), True)
+        #                     if lastMessage != None:
+        #                         if query_db('message_seen', "SELECT * FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, prevRoomId), True) == None:
+        #                             modify_db('message_seen',
+        #                                       "INSERT INTO MessageSeen (user_id, room_id, last_seen_msg_id) VALUES(?, ?, ?)",
+        #                                       (userid, room['id'], lastMessage['id']))
+        #                         else:
+        #                             modify_db('message_seen',
+        #                                       "UPDATE MessageSeen SET last_seen_msg_id=? WHERE user_id=? AND room_id=?",
+        #                                       (lastMessage['id'], userid, room['id']))
+        #         elif prevRoomId != 0 and prevRoomId != None:
+        #             lastMessage = query_db('message',
+        #                                     "SELECT * FROM Message WHERE room_id=? ORDER BY id DESC LIMIT 1",
+        #                                     (prevRoomId,), True)
+        #             if lastMessage != None:
+        #                 if query_db('message_seen', "SELECT * FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, prevRoomId), True) == None:
+        #                     modify_db('message_seen',
+        #                               "INSERT INTO MessageSeen (user_id, room_id, last_seen_msg_id) VALUES(?, ?, ?)",
+        #                               (userid, prevRoomId, lastMessage['id']))
+        #                 else:
+        #                     modify_db('message_seen',
+        #                               "UPDATE MessageSeen SET last_seen_msg_id=? WHERE user_id=? AND room_id=?",
+        #                               (lastMessage['id'], userid, prevRoomId))
+
         # Should be modified later; add friend feature and show only those who have been added as friends
         friends = query_db('user', "SELECT * FROM User")
 
         rooms = query_db('room', "SELECT * FROM Room WHERE user_id=?", (userid,))
         if len(rooms) == 0:
-            roomsStats = []
+            if roomid != 0:
+                roomsStats = []
+            else:
+                if not request.args.get('receiverid'):
+                    return redirect(url_for("showMessagesAll", userid=session['userid']))
+                receiverid = int(request.args.get('receiverid'))
+                user = query_db('user', "SELECT * FROM User WHERE id=?", (receiverid,), True)
+                roomsStats = [{'id': 0, 'users': [user]}]
             return render_template("messages.html",
                                    friends=friends, roomsStats=roomsStats, selectedRoomID=roomid,
                                    chatScreen=True, messagesWithUserInfo=None, datetime=datetime)
+
         else:
             roomsStats = []
             # Check whether room is selected from search box (if so roomid == 0)
@@ -880,12 +926,18 @@ def showMessages(userid, roomid):
 # Remove user from the specified room
 @app.route("/<int:userid>/leave_room/", methods=["POST"])
 def leaveRoom(userid):
-    # Delete messages if all the users within that room left
-    if len(query_db('room', "SELECT * FROM Room WHERE id=?", (int(request.form.get('room_id')),))) == 1:
-        modify_db('message', "DELETE FROM Message WHERE room_id=?", (int(request.form.get('room_id')),))
-    flash(u"You've successfully left a chat room.", 'info')
-    modify_db('room', "DELETE FROM Room WHERE id=? AND user_id=?", (int(request.form.get('room_id')), userid))
-    return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
+    if int(request.form.get('room_id')) == 0:
+        flash(u"You've successfully left a chat room.", 'info')
+        return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
+    else:
+        # Delete messages if all the users within that room left
+        if len(query_db('room', "SELECT * FROM Room WHERE id=?", (int(request.form.get('room_id')),))) == 1:
+            modify_db('message', "DELETE FROM Message WHERE room_id=?", (int(request.form.get('room_id')),))
+
+        modify_db('room', "DELETE FROM Room WHERE id=? AND user_id=?", (int(request.form.get('room_id')), userid))
+        modify_db('message_seen', "DELETE FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, int(request.form.get('room_id'))))
+        flash(u"You've successfully left a chat room.", 'info')
+        return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
 
 @socketio.on('connect')
 def connect():
@@ -894,8 +946,6 @@ def connect():
     if rooms != None:
         for room in rooms:
             join_room(room['id'])
-
-    emit('connect', room_ids)
 
 @socketio.on('disconnect')
 def disconnect():
@@ -991,26 +1041,28 @@ def setUpGroupChat(data):
             for member in members:
                 modify_db('room', "INSERT INTO Room (id, user_id, created_at) VALUES(?, ?, ?)", (room_id, member, timestamp))
 
-            roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room_id,))
-            users = []
-            # If there's only one user within that room
-            if len(roomsWithThatID) == 1:
-                newRoom = {
-                    'id': room_id,
-                    'users': users,
-                    'inactive': 1
-                }
-            else:
-                for roomWithThatID in roomsWithThatID:
-                    if roomWithThatID['user_id'] != int(session['userid']):
-                        users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
-                newRoom = {
-                    'id': room_id,
-                    'users': users,
-                    'inactive': 0
-                }
+            emit('redirect', {'url': url_for('showMessages', userid=session['userid'], roomid=room_id)})
 
-            emit('reflectNewRoom', newRoom)
+            # roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room_id,))
+            # users = []
+            # # If there's only one user within that room
+            # if len(roomsWithThatID) == 1:
+            #     newRoom = {
+            #         'id': room_id,
+            #         'users': users,
+            #         'inactive': 1
+            #     }
+            # else:
+            #     for roomWithThatID in roomsWithThatID:
+            #         if roomWithThatID['user_id'] != int(session['userid']):
+            #             users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
+            #     newRoom = {
+            #         'id': room_id,
+            #         'users': users,
+            #         'inactive': 0
+            #     }
+            #
+            # emit('reflectNewRoom', newRoom)
 
 # For notification purpose (not available yet)
 # @socketio.on('broadcast')

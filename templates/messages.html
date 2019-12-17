@@ -11,11 +11,13 @@
           <div id="friendsList" class="row overflow-auto no-gutters" style="min-height: 29.5rem; max-height: 29.5rem; word-wrap: break-word;">
               <div class="col-12">
                   <ul id="roomsWrapper" class="list-group mt-3 mx-3">
+
+                      <!-- This becomes visible when user focuses on user search box -->
                       {% if friends %}
                         {% for friend in friends %}
                             {% if friend['id'] != session['userid'] %}
                                 <li class="user-list-hidden list-group-item py-1" style="display: none;">
-                                    <a href="{{url_for('showMessages', userid=session['userid'], roomid=0, receiverid=friend['id'])}}" class="text-dark">
+                                    <a class="text-dark">
                                         {{friend['name']}}
                                     </a>
                                     <img id="{{'add_icon_'+friend['id']|string}}" src="/static/images/add_icon.jpeg" class="rounded-circle float-right mt-1" style="display: block; height: 16px; width: 16px;" onclick="selectUsers('{{friend['id']}}', '{{friend['name']}}')">
@@ -24,6 +26,8 @@
                             {% endif %}
                         {% endfor %}
                       {% endif %}
+
+                      <!-- The list of chat rooms user belongs to -->
                       {% if roomsStats|length != 0 %}
                         {% for roomStats in roomsStats %}
                             {% if roomStats['id'] == selectedRoomID %}
@@ -36,11 +40,17 @@
                                             Inactive Chat
                                         </a>
                                     {% else %}
-                                        <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="{{'room_active_'+roomStats['id']|string+'_text'}} text-white">
-                                            {% for user in roomStats['users'] %}
-                                                {{user['name']}}
-                                            {% endfor %}
-                                        </a>
+                                        {% if roomStats['id'] != 0 %}
+                                            <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="{{'room_active_'+roomStats['id']|string+'_text'}} text-white">
+                                                {% for user in roomStats['users'] %}
+                                                    {{user['name']}}
+                                                {% endfor %}
+                                            </a>
+                                        {% else %}
+                                            <a class="{{'room_active_'+roomStats['id']|string+'_text'}} text-white">
+                                                {{roomStats['users'][0]['name']}}
+                                            </a>
+                                        {% endif %}
                                     {% endif %}
                                     <img id="{{'menu_icon_'+roomStats['id']|string}}" src="/static/images/menu_icon.png" class="rounded-circle float-right mt-1" style="display: block; height: 16px; width: 16px;" onclick="leaveRoom({{roomStats['id']}})">
                                 </li>
@@ -54,11 +64,17 @@
                                             Inactive Chat
                                         </a>
                                     {% else %}
-                                        <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="text-dark">
-                                            {% for user in roomStats['users'] %}
-                                                {{user['name']}}
-                                            {% endfor %}
-                                        </a>
+                                        {% if roomStats['id'] != 0 %}
+                                            <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="text-dark">
+                                                {% for user in roomStats['users'] %}
+                                                    {{user['name']}}
+                                                {% endfor %}
+                                            </a>
+                                        {% else %}
+                                            <a class="text-dark">
+                                                {{roomStats['users'][0]['name']}}
+                                            </a>
+                                        {% endif %}
                                     {% endif %}
                                     <img id="{{'menu_icon_'+roomStats['id']|string}}" src="/static/images/menu_icon.png" class="rounded-circle float-right mt-1" style="display: block; height: 16px; width: 16px;" onclick="leaveRoom({{roomStats['id']}})">
                                 </li>
@@ -69,6 +85,7 @@
                             No chats available. Search users from the search box above to start chatting!
                         </p>
                       {% endif %}
+
                   </ul>
                 </div>
             </div>
@@ -131,7 +148,7 @@
                           </p>
                       {% endif %}
                 {% else %}
-                    <h5 class="mt-5 text-center">
+                    <h5 id="initialMsgAll" class="mt-5 text-center">
                         Please select the person to chat with from the left.
                     </h5>
                 {% endif %}
@@ -490,72 +507,82 @@
             btn.disabled = true;
         }
 
-        // When new room is created
-        socket.on('reflectNewRoom', function(data) {
-            // For the user who created this room
-            if (window.location.pathname.split('/')[1] == {{session['userid']}}) {
-                // Clear the selection
-                p = document.getElementById("selectedUsers");
-                p.setAttribute("style", "display: none;");
-                p.innerText = '';
-
-                // Remove initial message (very rare)
-                if (document.getElementById("noChatsAvailable") != null) {
-                    document.getElementById("noChatsAvailable").remove();
-                }
-
-                // Make currently selected room inactive
-                if (window.location.pathname.includes('receiverid')) {     // When roomid == 0 is currently selected
-                    currentActiveRoom = document.getElementById("room_active_0");
-                    currentActiveRoom.setAttribute("id", "room_0");
-                    currentActiveRoom.setAttribute("class", "room-list list-group-item py-1");
-                    currentActiveRoomText = document.getElementsByClassName("room_active_0_text");
-                    currentActiveRoomText[0].setAttribute("class", "text-dark");
-                } else if (window.location.pathname.split('messages/')[1] != "") {     // When another room is currently selected
-                    currentActiveRoom = document.getElementById("room_active_"+window.location.pathname.split('messages/')[1].slice(0,-1));
-                    currentActiveRoom.setAttribute("id", "room_"+window.location.pathname.split('messages/')[1].slice(0,-1));
-                    currentActiveRoom.setAttribute("class", "room-list list-group-item py-1");
-                    currentActiveRoomText = document.getElementsByClassName("room_active_"+window.location.pathname.split('messages/')[1].slice(0,-1)+"_text");
-                    currentActiveRoomText[0].setAttribute("class", "text-dark");
-                }
-
-                // Create element for new room
-                roomsWrapper = document.getElementById("roomsWrapper");
-                var newRoomWrapper = document.createElement('li');
-                newRoomWrapper.setAttribute("id", "room_active_"+data['id'].toString());
-                newRoomWrapper.setAttribute("class", "room-list list-group-item active py-1");
-                newRoomWrapper.setAttribute("style", "display: block;");
-                // var span = document.createElement('span');
-                // span.setAttribute("class", "mr-1");
-                // span.setAttribute("style", "height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block");
-                var a = document.createElement('a');
-                a.setAttribute('href', "/"+{{session['userid']}}+"/messages/"+data['id'].toString());
-                a.setAttribute('class', "text-white");
-                if (data['inactive'] == 1) {
-                    a.innerText = "Inactive Chat";
-                } else {
-                    a.innerText = '';
-                    for (let i=0; i<data['users'].length; i++) {
-                        a.innerText += data['users'][i]['name']
-                    }
-                }
-                var img = document.createElement('img');
-                img.setAttribute('id', "menu_icon_"+data['id'].toString());
-                img.setAttribute('src', "/static/images/menu_icon.png");
-                img.setAttribute('class', "rounded-circle float-right mt-1");
-                img.setAttribute('style', "display: block; height: 16px; width: 16px;");
-                img.setAttribute('onclick', "leaveRoom("+data['id'].toString()+")");
-
-                // newRoomWrapper.appendChild(span);
-                newRoomWrapper.appendChild(a);
-                newRoomWrapper.appendChild(img);
-                roomsWrapper.appendChild(newRoomWrapper);
-            }
-        });
-
         // When URL is sent from the server on socketio
         socket.on('redirect', function(data) {
             window.location = data.url;
         });
+
+        // // When new room is created
+        // socket.on('reflectNewRoom', function(data) {
+        //     // For the user who created this room
+        //     if (window.location.pathname.split('/')[1] == {{session['userid']}}) {
+        //         // Clear the selection
+        //         p = document.getElementById("selectedUsers");
+        //         p.setAttribute("style", "display: none;");
+        //         p.innerText = '';
+        //
+        //         // Remove initial message (very rare)
+        //         if (document.getElementById("noChatsAvailable") != null) {
+        //             document.getElementById("noChatsAvailable").remove();
+        //         }
+        //
+        //         // Make currently selected room inactive
+        //         if (window.location.pathname.includes('receiverid')) {     // When roomid == 0 is currently selected
+        //             currentActiveRoom = document.getElementById("room_active_0");
+        //             currentActiveRoom.setAttribute("id", "room_0");
+        //             currentActiveRoom.setAttribute("class", "room-list list-group-item py-1");
+        //             currentActiveRoomText = document.getElementsByClassName("room_active_0_text");
+        //             currentActiveRoomText[0].setAttribute("class", "text-dark");
+        //         } else if (window.location.pathname.split('messages/')[1] != "") {     // When another room is currently selected
+        //             currentActiveRoom = document.getElementById("room_active_"+window.location.pathname.split('messages/')[1].slice(0,-1));
+        //             currentActiveRoom.setAttribute("id", "room_"+window.location.pathname.split('messages/')[1].slice(0,-1));
+        //             currentActiveRoom.setAttribute("class", "room-list list-group-item py-1");
+        //             currentActiveRoomText = document.getElementsByClassName("room_active_"+window.location.pathname.split('messages/')[1].slice(0,-1)+"_text");
+        //             currentActiveRoomText[0].setAttribute("class", "text-dark");
+        //         }
+        //
+        //         // Create element for new room
+        //         roomsWrapper = document.getElementById("roomsWrapper");
+        //         var newRoomWrapper = document.createElement('li');
+        //         newRoomWrapper.setAttribute("id", "room_active_"+data['id'].toString());
+        //         newRoomWrapper.setAttribute("class", "room-list list-group-item active py-1");
+        //         newRoomWrapper.setAttribute("style", "display: block;");
+        //         // var span = document.createElement('span');
+        //         // span.setAttribute("class", "mr-1");
+        //         // span.setAttribute("style", "height: 0.6rem; width: 0.6rem; background-color: purple; border-radius: 50%; display: inline-block");
+        //         var a = document.createElement('a');
+        //         a.setAttribute('href', "/"+{{session['userid']}}+"/messages/"+data['id'].toString());
+        //         a.setAttribute('class', "text-white");
+        //         if (data['inactive'] == 1) {
+        //             a.innerText = "Inactive Chat";
+        //         } else {
+        //             a.innerText = '';
+        //             for (let i=0; i<data['users'].length; i++) {
+        //                 a.innerText += data['users'][i]['name']
+        //             }
+        //         }
+        //         var img = document.createElement('img');
+        //         img.setAttribute('id', "menu_icon_"+data['id'].toString());
+        //         img.setAttribute('src', "/static/images/menu_icon.png");
+        //         img.setAttribute('class', "rounded-circle float-right mt-1");
+        //         img.setAttribute('style', "display: block; height: 16px; width: 16px;");
+        //         img.setAttribute('onclick', "leaveRoom("+data['id'].toString()+")");
+        //
+        //         // newRoomWrapper.appendChild(span);
+        //         newRoomWrapper.appendChild(a);
+        //         newRoomWrapper.appendChild(img);
+        //         roomsWrapper.appendChild(newRoomWrapper);
+        //
+        //         // Set up new message screen
+        //         if (document.getElementById("initialMsgAll") != null) {
+        //             document.getElementById("initialMsgAll").remove();
+        //         }
+        //         var initChatMsg = document.createElement('p');
+        //         initChatMsg.setAttribute('id', "initMsg");
+        //         initChatMsg.setAttribute('class', "mt-3 text-center");
+        //         initChatMsg.innerText = "This is the beginning of chat. Let's send a message to start chatting!";
+        //         document.getElementById("chatScreenWrapper").appendChild(initChatMsg);
+        //     }
+        // });
     </script>
 {% endblock %}
