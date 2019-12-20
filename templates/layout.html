@@ -8,7 +8,7 @@
         <!-- jQuery -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
         <!-- JavaScript -->
-        <script src="/static/js/bootstrap.min.js"></script>
+        <script src="/static/js/bootstrap.bundle.min.js"></script>
         <!--  ChartJS -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
         <!--  flaskSocketIO -->
@@ -129,7 +129,7 @@
         {% endif %}
         <!-- navbar end -->
         <!-- container -->
-        <div class=".container-fluid">
+        <div id="all" class=".container-fluid">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}

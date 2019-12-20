@@ -655,11 +655,16 @@ def showMessagesAll(userid):
                         seenAll = False
 
                 roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
+                if query_db('room_setting', "SELECT * FROM RoomSetting WHERE room_id=?", (room['id'],), True) != None:
+                    room_name = query_db('room_setting', "SELECT * FROM RoomSetting WHERE room_id=?", (room['id'],), True)['name']
+                else:
+                    room_name = None
                 users = []
                 # If there's only one user within that room
                 if len(roomsWithThatID) == 1:
                     roomsStats.append({
                         'id': roomsWithThatID[0]['id'],
+                        'name': room_name,
                         'users': users,
                         'seenAll': seenAll,
                         'inactive': True
@@ -670,6 +675,7 @@ def showMessagesAll(userid):
                             users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                     roomsStats.append({
                         'id': roomWithThatID['id'],
+                        'name': room_name,
                         'users': users,
                         'seenAll': seenAll,
                         'inactive': False
@@ -786,11 +792,16 @@ def showMessages(userid, roomid):
                                 seenAll = False
 
                     roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
+                    if query_db('room_setting', "SELECT * FROM RoomSetting WHERE room_id=?", (room['id'],), True) != None:
+                        room_name = query_db('room_setting', "SELECT * FROM RoomSetting WHERE room_id=?", (room['id'],), True)['name']
+                    else:
+                        room_name = None
                     users = []
                     # If there's only one user within that room
                     if len(roomsWithThatID) == 1:
                         roomsStats.append({
                             'id': dict(roomsWithThatID[0])['id'],
+                            'name': room_name,
                             'users': users,
                             'seenAll': seenAll,
                             'inactive': True
@@ -801,6 +812,7 @@ def showMessages(userid, roomid):
                                 users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                         roomsStats.append({
                             'id': dict(roomWithThatID)['id'],
+                            'name': room_name,
                             'users': users,
                             'seenAll': seenAll,
                             'inactive': False
@@ -842,12 +854,17 @@ def showMessages(userid, roomid):
                         else:
                             seenAll = None
 
-                    roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],))
+                    roomsWithThatID = query_db('room', "SELECT * FROM Room WHERE id=?", (room['id'],), True)
+                    if query_db('room_setting', "SELECT * FROM RoomSetting WHERE room_id=?", (room['id'],)) != None:
+                        room_name = query_db('room_setting', "SELECT * FROM RoomSetting WHERE room_id=?", (room['id'],), True)['name']
+                    else:
+                        room_name = None
                     users = []
                     # If there's only one user within that room
                     if len(roomsWithThatID) == 1:
                         roomsStats.append({
                             'id': dict(roomsWithThatID[0])['id'],
+                            'name': room_name,
                             'users': users,
                             'seenAll': seenAll,
                             'inactive': True
@@ -858,6 +875,7 @@ def showMessages(userid, roomid):
                                 users.append(dict(query_db('user', "SELECT * FROM User WHERE id=?", (roomWithThatID['user_id'],), True)))
                         roomsStats.append({
                             'id': dict(roomWithThatID)['id'],
+                            'name': room_name,
                             'users': users,
                             'seenAll': seenAll,
                             'inactive': False
@@ -923,21 +941,30 @@ def showMessages(userid, roomid):
                                                friends=friends, roomsStats=roomsStats, selectedRoomID=0,
                                                chatScreen=True, messagesWithUserInfo=messagesWithUserInfo, datetime=datetime)
 
+# Enable users to set room name
+@app.route("/modify_room_property/<int:roomid>/", methods=["POST"])
+def modifyRoomProperty(roomid):
+    if query_db('room_setting', 'SELECT * FROM RoomSetting WHERE room_id=?', (roomid,), True) == None:
+        modify_db('room_setting', "INSERT INTO RoomSetting (room_id, name) VALUES(?, ?)", (roomid, request.form.get('room_name')))
+    else:
+        modify_db('room_setting', "UPDATE RoomSetting SET name=? WHERE room_id=?", (request.form.get('room_name'), roomid))
+
+    return json.dumps({'new_name': request.form.get('room_name')})
+
 # Remove user from the specified room
 @app.route("/<int:userid>/leave_room/", methods=["POST"])
 def leaveRoom(userid):
-    if int(request.form.get('room_id')) == 0:
-        flash(u"You've successfully left a chat room.", 'info')
-        return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
-    else:
+    if int(request.form.get('room_id')) != 0:
         # Delete messages if all the users within that room left
         if len(query_db('room', "SELECT * FROM Room WHERE id=?", (int(request.form.get('room_id')),))) == 1:
             modify_db('message', "DELETE FROM Message WHERE room_id=?", (int(request.form.get('room_id')),))
+            modify_db('room_setting', "DELETE FROM RoomSetting WHERE room_id=?", (int(request.form.get('room_id')),))
 
         modify_db('room', "DELETE FROM Room WHERE id=? AND user_id=?", (int(request.form.get('room_id')), userid))
         modify_db('message_seen', "DELETE FROM MessageSeen WHERE user_id=? AND room_id=?", (userid, int(request.form.get('room_id'))))
-        flash(u"You've successfully left a chat room.", 'info')
-        return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
+
+    flash(u"You've successfully left a chat room.", 'info')
+    return json.dumps({'redirectURL': "/"+str(userid)+"/messages/"})
 
 @socketio.on('connect')
 def connect():

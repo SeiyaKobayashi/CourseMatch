@@ -19,6 +19,11 @@ def init_app():
         init_db("room")
         print('Done.')
 
+    if not path.exists("models/room_setting.db"):
+        print('Initializing "room_setting.db"...')
+        init_db("room_setting")
+        print('Done.')
+
     if not path.exists("models/message.db"):
         print('Initializing "message.db"...')
         init_db("message")

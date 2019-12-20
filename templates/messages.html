@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <div class="row justify-content-center no-gutters" style="min-width: 350px;">
+    <div id="chatScreenAll" class="row justify-content-center no-gutters" style="min-width: 350px;">
       <div id="friendsListWrapper" class="d-flex col-3 border flex-column mt-4" style="min-height: 38.5rem; max-height: 38.5rem;">
           <div class="row justify-content-center text-center no-gutters mt-3">
               <input id="searchUser" class="col-10 py-1 px-2" placeholder="Search friends" aria-label="Search">
@@ -41,18 +41,35 @@
                                         </a>
                                     {% else %}
                                         {% if roomStats['id'] != 0 %}
-                                            <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="{{'room_active_'+roomStats['id']|string+'_text'}} text-white">
-                                                {% for user in roomStats['users'] %}
-                                                    {{user['name']}}
-                                                {% endfor %}
+                                            <a id="{{'room_name_'+roomStats['id']|string}}" href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="{{'room_active_'+roomStats['id']|string+'_text'}} text-white">
+                                                {% if roomStats['name'] %}
+                                                    {{roomStats['name']}}
+                                                {% else %}
+                                                    {% for user in roomStats['users'] %}
+                                                        {{user['name']}}
+                                                    {% endfor %}
+                                                {% endif %}
                                             </a>
                                         {% else %}
-                                            <a class="{{'room_active_'+roomStats['id']|string+'_text'}} text-white">
-                                                {{roomStats['users'][0]['name']}}
+                                            <a id="{{'room_name_'+roomStats['id']|string}}" class="{{'room_active_'+roomStats['id']|string+'_text'}} text-white">
+                                                {% if roomStats['name'] %}
+                                                    {{roomStats['name']}}
+                                                {% else %}
+                                                    {{roomStats['users'][0]['name']}}
+                                                {% endif %}
                                             </a>
                                         {% endif %}
                                     {% endif %}
-                                    <img id="{{'menu_icon_'+roomStats['id']|string}}" src="/static/images/menu_icon.png" class="rounded-circle float-right mt-1" style="display: block; height: 16px; width: 16px;" onclick="leaveRoom({{roomStats['id']}})">
+                                    <img src="/static/images/menu_icon.png" class="dropright dropdown-toggle rounded-circle float-right mt-1" style="display: block; height: 16px; width: 16px;" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <div class="dropdown-menu">
+                                        <p class="dropdown-item mx-0 mb-0" data-toggle="modal" data-target="{{'#roomNameModal_'+roomStats['id']|string}}">
+                                            Change Name
+                                        </p>
+                                        <div class="dropdown-divider"></div>
+                                        <p id="{{'menu_delete_'+roomStats['id']|string}}" class="dropdown-item mx-0 mb-0" onclick="leaveRoom({{roomStats['id']}})">
+                                            Delete Chat
+                                        </p>
+                                    </div>
                                 </li>
                             {% else %}
                                 <li id="{{'room_'+roomStats['id']|string}}" class="room-list list-group-item py-1" style="display: block;">
@@ -65,27 +82,66 @@
                                         </a>
                                     {% else %}
                                         {% if roomStats['id'] != 0 %}
-                                            <a href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="text-dark">
-                                                {% for user in roomStats['users'] %}
-                                                    {{user['name']}}
-                                                {% endfor %}
+                                            <a id="{{'room_name_'+roomStats['id']|string}}" href="{{url_for('showMessages', userid=session['userid'], roomid=roomStats['id'])}}" class="text-dark">
+                                                {% if roomStats['name'] %}
+                                                    {{roomStats['name']}}
+                                                {% else %}
+                                                    {% for user in roomStats['users'] %}
+                                                        {{user['name']}}
+                                                    {% endfor %}
+                                                {% endif %}
                                             </a>
                                         {% else %}
-                                            <a class="text-dark">
-                                                {{roomStats['users'][0]['name']}}
+                                            <a id="{{'room_name_'+roomStats['id']|string}}" class="text-dark">
+                                                {% if roomStats['name'] %}
+                                                    {{roomStats['name']}}
+                                                {% else %}
+                                                    {{roomStats['users'][0]['name']}}
+                                                {% endif %}
                                             </a>
                                         {% endif %}
                                     {% endif %}
-                                    <img id="{{'menu_icon_'+roomStats['id']|string}}" src="/static/images/menu_icon.png" class="rounded-circle float-right mt-1" style="display: block; height: 16px; width: 16px;" onclick="leaveRoom({{roomStats['id']}})">
+                                    <img src="/static/images/menu_icon.png" class="dropright dropdown-toggle rounded-circle float-right mt-1" style="display: block; height: 16px; width: 16px;" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <div class="dropdown-menu">
+                                        <p class="dropdown-item mx-0 mb-0" data-toggle="modal" data-target="{{'#roomNameModal_'+roomStats['id']|string}}">
+                                            Change Name
+                                        </p>
+                                        <div class="dropdown-divider"></div>
+                                        <p id="{{'menu_delete_'+roomStats['id']|string}}" class="dropdown-item mx-0 mb-0" onclick="leaveRoom({{roomStats['id']}})">
+                                            Delete Chat
+                                        </p>
+                                    </div>
                                 </li>
                             {% endif %}
+
+                            <!-- Modal -->
+                            <div class="modal fade" id="{{'roomNameModal_'+roomStats['id']|string}}" tabindex="-1" role="dialog" aria-hidden="true">
+                              <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="roomNameModalLabel">Enter Room Name</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                      <span aria-hidden="true">&times;</span>
+                                    </button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <input type="text" id="{{'room_name_modal_'+roomStats['id']|string}}" class="form-control" placeholder="e.g. Study Group (CS101, Fall 2019)" value="{{roomStats['name']|string}}">
+                                  </div>
+                                  <div class="modal-footer justify-content-center">
+                                    <button type="button" class="btn btn-primary" onclick="changeRoomProperty({{roomStats['id']}})">Save</button>
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <!-- Modal end -->
+
                         {% endfor %}
                       {% else %}
                         <p id="noChatsAvailable" class="mt-3" style="display: block;">
                             No chats available. Search users from the search box above to start chatting!
                         </p>
                       {% endif %}
-
                   </ul>
                 </div>
             </div>
@@ -167,15 +223,11 @@
 
     <script>
         const socket = io('');
-        var currentRooms = [];     // Global variable to store list of rooms currently joining
+        // var currentRooms = [];     // Global variable to store list of rooms currently joining
 
         // Make sure that scroll bar always points at the bottom
         chatHistory = document.getElementById("chatListWrapper");
         chatHistory.scrollTop = chatHistory.scrollHeight;
-
-        function getCurrentRooms() {
-            return currentRooms;
-        }
 
         // When user receives a message
         socket.on('showMsg', function(data) {
@@ -312,6 +364,45 @@
                 });
             } else {
                 return false;
+            }
+        }
+
+        // Modify room properties (currently name only)
+        function changeRoomProperty(room_id) {
+            roomName = document.getElementById('room_name_modal_'+room_id.toString()).value;
+            if (/\S/.test(roomName)) {
+                $.ajax({
+                    url: "/modify_room_property/"+room_id.toString()+"/",
+                    type: "POST",
+                    dataType: 'json',
+                    data: {
+                        room_name: roomName
+                    }
+                }).done((res) => {
+                    $("#roomNameModal_"+room_id.toString()).modal("hide");
+                    var flash = document.createElement('div');
+                    flash.setAttribute('class', "alert alert-success alert-dismissible fade show");
+                    flash.setAttribute('role', "alert");
+                    flash.innerText = "Room name has been successfully changed.";
+                    var btn = document.createElement('button');
+                    btn.setAttribute('type', "button");
+                    btn.setAttribute('class', "close");
+                    btn.setAttribute('data-dismiss', "alert");
+                    btn.setAttribute('aria-label', "Close");
+                    var span = document.createElement('span');
+                    span.setAttribute('aria-hidden', 'true');
+                    span.innerText = '×';
+                    btn.appendChild(span);
+                    flash.appendChild(btn);
+                    var chatAll = document.getElementById('chatScreenAll');
+                    var wrapper = document.getElementById('all');
+                    wrapper.insertBefore(flash, chatAll);
+
+                    var a = document.getElementById('room_name_'+room_id.toString());
+                    a.innerText = res['new_name'];
+
+                    setTimeout(() => $(".alert").slideUp(200), 2000);
+                });
             }
         }
 
@@ -562,7 +653,7 @@
         //             }
         //         }
         //         var img = document.createElement('img');
-        //         img.setAttribute('id', "menu_icon_"+data['id'].toString());
+        //         img.setAttribute('id', "menu_delete_"+data['id'].toString());
         //         img.setAttribute('src', "/static/images/menu_icon.png");
         //         img.setAttribute('class', "rounded-circle float-right mt-1");
         //         img.setAttribute('style', "display: block; height: 16px; width: 16px;");
